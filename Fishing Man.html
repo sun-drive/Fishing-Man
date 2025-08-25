@@ -1,0 +1,143 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>낚시 웹게임</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <h1>낚시 웹게임</h1>
+    <div id="game-container">
+        <div id="fishing-spot">
+            <p>낚시터</p>
+            <div id="fish-icon"></div>
+            <div id="bar-minigame-container" class="hidden">
+                <div id="catch-progress-bar">
+                    <div id="catch-progress"></div>
+                </div>
+                <div id="control-bar-container">
+                    <div id="bar-fish-icon"></div>
+                    <div id="player-control-bar"></div>
+                </div>
+            </div>
+        </div>
+        <div id="ui-container">
+            <div id="top-row">
+                <div id="top-left-buttons">
+                    <button id="shop-button">상점</button>
+                    <button id="collection-button">도감</button>
+                </div>
+                <div id="top-right-buttons">
+                    <button id="cast-button">낚싯대 던지기</button>
+                    <button id="inventory-button">인벤토리</button>
+                </div>
+            </div>
+            <div id="bottom-row">
+                <div id="bottom-left-buttons">
+                    <button id="save-button">저장하기</button>
+                    <button id="load-button">불러오기</button>
+                </div>
+                <div id="bottom-right-buttons">
+                    <button id="reset-button" class="reset-button">초기화</button>
+                </div>
+            </div>
+        </div>
+        <div id="player-info">
+            <p>레벨: <span id="player-level">1</span></p>
+            <p>경험치: <span id="player-xp">0</span> / <span id="xp-to-next-level">100</span></p>
+            <p>골드: <span id="player-gold">10</span></p>
+        </div>
+    </div>
+
+    <div id="shop-modal" class="hidden">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2>상점</h2>
+                <button id="close-shop-button">&times;</button>
+            </div>
+            <div class="modal-body">
+                <div class="shop-tabs">
+                    <button class="tab-link active" data-tab="gold-shop-tab">골드 상점</button>
+                    <button class="tab-link" data-tab="achievement-shop-tab">도전과제 상점</button>
+                </div>
+
+                <div id="gold-shop-tab" class="tab-content active">
+                    <h3>골드 상점</h3>
+                    <ul id="gold-shop-list">
+                        <li>카본 낚싯대 (300 골드) <button class="buy-button" disabled>구매</button></li>
+                        <li>강철 낚싯대 (1000 골드) <button class="buy-button" disabled>구매</button></li>
+                    </ul>
+                </div>
+
+                <div id="achievement-shop-tab" class="tab-content">
+                    <h3>도전과제 상점</h3>
+                    <ul id="achievement-shop-list">
+                        <li>장인의 낚싯대 (붕어 50마리 잡기) <button class="claim-button" disabled>획득</button></li>
+                        <li>전설의 낚싯대 (참치 1마리 잡기) <button class="claim-button" disabled>획득</button></li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div id="inventory-modal" class="hidden">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2>인벤토리</h2>
+                <button id="close-inventory-button">&times;</button>
+            </div>
+            <div class="modal-body">
+                <div class="inventory-tabs">
+                    <button class="tab-link active" data-tab="fish-inventory-tab">물고기</button>
+                    <button class="tab-link" data-tab="equipment-inventory-tab">장비</button>
+                </div>
+
+                <div id="fish-inventory-tab" class="tab-content active">
+                    <h3>잡은 물고기</h3>
+                    <ul id="fish-list">
+                        <!-- Fish items will be populated here by JS -->
+                    </ul>
+                </div>
+
+                <div id="equipment-inventory-tab" class="tab-content">
+                    <h3>보유 장비</h3>
+                    <ul id="equipment-list">
+                        <!-- Equipment items will be populated here by JS -->
+                        <li>기본 낚싯대 (장착중)</li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div id="collection-modal" class="hidden">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2>도감</h2>
+                <button id="close-collection-button">&times;</button>
+            </div>
+            <div id="collection-list" class="modal-body">
+                <!-- Collection items will be populated here by JS -->
+            </div>
+        </div>
+    </div>
+
+    <div id="reset-confirmation-modal" class="hidden">
+        <div class="modal-content">
+            <div class="modal-body" id="reset-modal-body">
+                <p class="reset-warning-text">정말로 이 진행상황을 삭제하시겠습니까?</p>
+                <p class="reset-warning-text">*이 작업은 복구 할 수 없습니다.</p>
+                <div id="reset-confirmation-buttons">
+                    <button id="confirm-delete-button">삭제</button>
+                    <button id="cancel-delete-button">취소</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="game.js"></script>
+    <script src="ui.js"></script>
+    <script src="main.js"></script>
+</body>
+</html>

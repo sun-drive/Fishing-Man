@@ -1,0 +1,580 @@
+body {
+    font-family: sans-serif;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    background-color: #f0f8ff;
+}
+
+#game-container {
+    width: 800px;
+    border: 2px solid #000;
+    padding: 20px;
+    background-color: #fff;
+}
+
+#fishing-spot {
+    height: 400px;
+    background-color: #add8e6;
+    border: 1px solid #000;
+    margin-bottom: 20px;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    position: relative; /* For message and fish positioning */
+    overflow: hidden; /* Fish shouldn't go outside */
+    background-size: cover;
+    background-position: center;
+    transition: background-image 1s ease-in-out;
+}
+
+#fishing-spot.minigame-active {
+    cursor: crosshair;
+}
+
+#fish-icon {
+    width: 100px;
+    height: 100px;
+    background-color: #ff4500; /* Placeholder color */
+    border-radius: 50%;
+    position: absolute;
+    display: none; /* Hidden by default */
+    transition: top 1s, left 1s; /* Smooth movement */
+    z-index: 10;
+}
+
+.game-message {
+    position: absolute;
+    bottom: 20px;
+    left: 50%;
+    transform: translateX(-50%);
+    background-color: rgba(0, 0, 0, 0.7);
+    color: white;
+    padding: 10px 20px;
+    border-radius: 10px;
+    font-size: 18px;
+    z-index: 30; /* Always on top */
+}
+
+#region-container {
+    display: flex;
+    gap: 10px;
+    margin-bottom: 10px;
+    justify-content: center;
+    flex-wrap: wrap;
+}
+
+.region-button {
+    padding: 8px 15px;
+    font-size: 14px;
+    cursor: pointer;
+    border: 1px solid #000;
+    background-color: #f0f0f0;
+}
+
+.region-button.active {
+    background-color: #4CAF50;
+    color: white;
+    border: 2px solid #000;
+}
+
+.region-button:disabled {
+    background-color: #666;
+    color: #aaa;
+    cursor: not-allowed;
+}
+
+#ui-container {
+    display: flex;
+    flex-direction: column; /* 세로 정렬 */
+    justify-content: space-between; /* 상단/하단 행을 분리 */
+    height: 150px; /* UI 컨테이너 높이 고정 */
+    margin-bottom: 20px;
+}
+
+#top-row, #bottom-row {
+    display: flex;
+    justify-content: space-between; /* 왼쪽/오른쪽 버튼 그룹을 분리 */
+    width: 100%;
+}
+
+#top-left-buttons, #top-right-buttons,
+#bottom-left-buttons, #bottom-right-buttons {
+    display: flex;
+    gap: 10px; /* 버튼 간 간격 */
+}
+
+/* 기존 버튼 스타일 유지 */
+button {
+    padding: 10px 20px;
+    font-size: 16px;
+    cursor: pointer;
+}
+
+button:disabled {
+    background-color: #ccc;
+    cursor: not-allowed;
+}
+
+/* 초기화 버튼은 오른쪽 아래에 배치되므로, 별도 스타일 */
+#bottom-right-buttons {
+    justify-content: flex-end; /* 오른쪽 정렬 */
+}
+
+#region-container {
+    display: flex;
+    gap: 10px;
+    margin-bottom: 10px;
+    justify-content: center;
+    flex-wrap: wrap;
+}
+
+.region-button {
+    padding: 8px 15px;
+    font-size: 14px;
+    cursor: pointer;
+    border: 1px solid #000;
+    background-color: #f0f0f0;
+}
+
+.region-button.active {
+    background-color: #4CAF50;
+    color: white;
+    border: 2px solid #000;
+}
+
+.region-button:disabled {
+    background-color: #666;
+    color: #aaa;
+    cursor: not-allowed;
+}
+
+#player-info {
+    display: flex;
+    justify-content: space-around;
+}
+
+/* Bar Minigame Styles */
+#bar-minigame-container {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    width: 90%;
+    height: 90%;
+    background-color: rgba(0, 0, 0, 0.5);
+    border: 2px solid #fff;
+    z-index: 20;
+}
+
+#bar-minigame-container.hidden {
+    display: none;
+}
+
+#control-bar-container {
+    position: absolute;
+    top: 5%;
+    bottom: 5%;
+    left: 30px;
+    width: 60px;
+    background-color: rgba(0, 0, 0, 0.2);
+    border: 1px solid #fff;
+}
+
+#catch-progress-bar {
+    position: absolute;
+    top: 5%;
+    bottom: 5%;
+    right: 30px;
+    width: 40px;
+    background-color: #555;
+    border: 1px solid #fff;
+}
+
+#catch-progress {
+    width: 100%;
+    height: 0%; /* Starts at 0 */
+    background-color: #4caf50;
+    position: absolute;
+    bottom: 0;
+    transition: height 0.2s;
+}
+
+#bar-fish-icon {
+    position: absolute;
+    left: 0;
+    width: 100%;
+    height: 25px; /* Fish height */
+    background-color: #00ffff;
+    /* top is set by JS */
+}
+
+#player-control-bar {
+    position: absolute;
+    left: 0;
+    width: 100%;
+    height: 100px; /* Player bar height */
+    background-color: rgba(255, 255, 255, 0.4);
+    border: 2px solid #fff;
+    /* top is set by JS */
+}
+
+/* Shop Modal Styles */
+#shop-modal {
+    position: fixed; /* Stay in place */
+    z-index: 50; /* Sit on top */
+    left: 0;
+    top: 0;
+    width: 100%;
+    height: 100%;
+    overflow: auto; /* Enable scroll if needed */
+    background-color: rgba(0,0,0,0.6); /* Black w/ opacity */
+}
+
+#shop-modal.hidden {
+    display: none;
+}
+
+.modal-content {
+    background-color: #fefefe;
+    margin: 10% auto; /* 10% from the top and centered */
+    padding: 20px;
+    border: 1px solid #888;
+    width: 80%;
+    max-width: 700px;
+    border-radius: 10px;
+}
+
+.modal-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    border-bottom: 1px solid #ddd;
+    padding-bottom: 10px;
+}
+
+#close-shop-button {
+    color: #aaa;
+    font-size: 28px;
+    font-weight: bold;
+    background: none;
+    border: none;
+    padding: 0;
+}
+
+#close-shop-button:hover,
+#close-shop-button:focus {
+    color: black;
+    text-decoration: none;
+    cursor: pointer;
+}
+
+.modal-body {
+    margin-top: 20px;
+}
+
+.shop-tabs {
+    overflow: hidden;
+    border-bottom: 1px solid #ccc;
+    margin-bottom: 15px;
+}
+
+.tab-link {
+    background-color: #f1f1f1;
+    float: left;
+    border: none;
+    outline: none;
+    cursor: pointer;
+    padding: 14px 16px;
+    transition: 0.3s;
+    font-size: 17px;
+    border-radius: 5px 5px 0 0;
+}
+
+.tab-link:hover {
+    background-color: #ddd;
+}
+
+.tab-link.active {
+    background-color: #ccc;
+}
+
+.tab-content {
+    display: none;
+    padding: 6px 12px;
+    border-top: none;
+}
+
+.tab-content.active {
+    display: block;
+}
+
+#gold-shop-list, #achievement-shop-list {
+    list-style-type: none;
+    padding: 0;
+    height: 200px;
+    overflow-y: auto;
+    border: 1px solid #ddd;
+    padding: 5px;
+}
+
+#gold-shop-list li, #achievement-shop-list li {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 8px;
+    border-bottom: 1px solid #f0f0f0;
+    flex-wrap: wrap; /* For smaller screens */
+}
+
+#achievement-shop-list .item-desc {
+    font-size: 12px;
+    color: #555;
+    width: 100%;
+}
+
+#gold-shop-list li.equipped, #achievement-shop-list li.equipped {
+    background-color: #e0efff;
+}
+
+/* Inventory Modal Styles (reusing shop modal styles) */
+#inventory-modal {
+    position: fixed;
+    z-index: 50;
+    left: 0;
+    top: 0;
+    width: 100%;
+    height: 100%;
+    overflow: auto;
+    background-color: rgba(0,0,0,0.6);
+}
+
+#inventory-modal.hidden {
+    display: none;
+}
+
+#close-inventory-button {
+    color: #aaa;
+    font-size: 28px;
+    font-weight: bold;
+    background: none;
+    border: none;
+    padding: 0;
+}
+
+#close-inventory-button:hover,
+#close-inventory-button:focus {
+    color: black;
+    text-decoration: none;
+    cursor: pointer;
+}
+
+.inventory-tabs { /* Reusing shop-tabs styles */
+    overflow: hidden;
+    border-bottom: 1px solid #ccc;
+    margin-bottom: 15px;
+}
+
+.inventory-tabs .tab-link { /* Reusing tab-link styles */
+    background-color: #f1f1f1;
+    float: left;
+    border: none;
+    outline: none;
+    cursor: pointer;
+    padding: 14px 16px;
+    transition: 0.3s;
+    font-size: 17px;
+    border-radius: 5px 5px 0 0;
+}
+
+.inventory-tabs .tab-link:hover {
+    background-color: #ddd;
+}
+
+.inventory-tabs .tab-link.active {
+    background-color: #ccc;
+}
+
+#fish-inventory-tab, #equipment-inventory-tab { /* Reusing tab-content styles */
+    display: none;
+    padding: 6px 12px;
+    border-top: none;
+}
+
+#fish-inventory-tab.active, #equipment-inventory-tab.active {
+    display: block;
+}
+
+#fish-list, #equipment-list {
+    list-style-type: none;
+    padding: 0;
+    height: 200px;
+    overflow-y: auto;
+    border: 1px solid #ddd;
+    padding: 5px;
+}
+
+#fish-list li, #equipment-list li {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 8px;
+    border-bottom: 1px solid #f0f0f0;
+}
+
+#fish-list li:last-child, #equipment-list li:last-child {
+    border-bottom: none;
+}
+
+/* Collection Modal Styles */
+#collection-modal {
+    position: fixed;
+    z-index: 60; /* Higher than other modals */
+    left: 0;
+    top: 0;
+    width: 100%;
+    height: 100%;
+    overflow: auto;
+    background-color: rgba(0,0,0,0.6);
+}
+
+#collection-modal.hidden {
+    display: none;
+}
+
+#close-collection-button {
+    color: #aaa;
+    font-size: 28px;
+    font-weight: bold;
+    background: none;
+    border: none;
+    padding: 0;
+    cursor: pointer;
+}
+
+.collection-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(100px, 1fr));
+    gap: 10px;
+    margin-top: 10px;
+    margin-bottom: 20px;
+}
+
+.collection-card {
+    border: 1px solid #ddd;
+    padding: 10px;
+    text-align: center;
+    border-radius: 5px;
+}
+
+.collection-card.not-caught {
+    background-color: #333;
+    color: #777;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+}
+
+
+/* Rarity Colors */
+.rarity-common { background-color: #e0e0e0; } /* Gray */
+.rarity-uncommon { background-color: #c8e6c9; } /* Light Green */
+.rarity-rare { background-color: #a5d6a7; } /* Green */
+.rarity-epic {
+    background: linear-gradient(to right, violet, indigo, blue, green, yellow, orange, red);
+    color: white; /* For better contrast on rainbow */
+}
+
+/* Reset Confirmation Modal Styles */
+#reset-confirmation-modal {
+    position: fixed;
+    z-index: 100; /* Highest z-index to be on top of everything */
+    left: 0;
+    top: 0;
+    width: 100%;
+    height: 100%;
+    overflow: auto;
+    background-color: rgba(0,0,0,0.8); /* Darker overlay */
+    display: flex;
+    justify-content: center;
+    align-items: center;
+}
+
+#reset-confirmation-modal.hidden {
+    display: none;
+}
+
+#reset-modal-body {
+    background-color: #fefefe;
+    margin: auto;
+    padding: 30px;
+    border: 1px solid #888;
+    width: 90%;
+    max-width: 400px;
+    border-radius: 10px;
+    text-align: center;
+}
+
+.reset-warning-text {
+    color: red;
+    font-size: 1.2em;
+    font-weight: bold;
+    margin-bottom: 10px;
+}
+
+#reset-confirmation-buttons {
+    display: flex;
+    justify-content: space-around;
+    margin-top: 20px;
+}
+
+#confirm-delete-button {
+    background-color: red;
+    color: white;
+    padding: 10px 20px;
+    border: none;
+    border-radius: 5px;
+    cursor: pointer;
+    font-size: 1em;
+}
+
+#confirm-delete-button:hover {
+    background-color: darkred;
+}
+
+#cancel-delete-button {
+    background-color: green;
+    color: black;
+    padding: 10px 20px;
+    border: none;
+    border-radius: 5px;
+    cursor: pointer;
+    font-size: 1em;
+}
+
+#cancel-delete-button:hover {
+    background-color: darkgreen;
+}
+
+/* Account Deleted Message */
+.account-deleted-message {
+    position: fixed;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    background-color: rgba(255, 0, 0, 0.8); /* Red background */
+    color: white;
+    padding: 20px 40px;
+    border-radius: 10px;
+    font-size: 2em;
+    font-weight: bold;
+    text-align: center;
+    z-index: 101; /* Above modal */
+    animation: fadeOut 3s forwards;
+}
+
+@keyframes fadeOut {
+    0% { opacity: 1; }
+    80% { opacity: 1; }
+    100% { opacity: 0; display: none; }
+}
