@@ -32,14 +32,29 @@ const fishTypesByRegion = {
         { name: '거대 바다 거미', rarity: 'rare', minSize: 30, maxSize: 50, basePrice: 90, barHeight: 18 },
         { name: '심해털게', rarity: 'legendary', minSize: 40, maxSize: 60, basePrice: 800, barHeight: 7 },
     ],
-    '전설의 호수': []
+    '늪지대': [
+        { name: '맹그로브 크랩', rarity: 'uncommon', minSize: 10, maxSize: 20, basePrice: 15, barHeight: 28 },
+        { name: '늪지 미꾸라지', rarity: 'common', minSize: 15, maxSize: 25, basePrice: 5, barHeight: 38 },
+        { name: '무태장어', rarity: 'epic', minSize: 80, maxSize: 150, basePrice: 200, barHeight: 10 },
+        { name: '톱날 꽃게', rarity: 'uncommon', minSize: 15, maxSize: 25, basePrice: 20, barHeight: 26 },
+        { name: '독가시치', rarity: 'legendary', minSize: 20, maxSize: 40, basePrice: 900, barHeight: 6 },
+    ],
+    '아마존 강': [
+        { name: '피라루쿠', rarity: 'rare', minSize: 100, maxSize: 200, basePrice: 180, barHeight: 15 },
+        { name: '피라냐', rarity: 'common', minSize: 15, maxSize: 30, basePrice: 10, barHeight: 30 },
+        { name: '네온 테트라', rarity: 'uncommon', minSize: 2, maxSize: 4, basePrice: 25, barHeight: 40 },
+        { name: '실버 아로와나', rarity: 'legendary', minSize: 60, maxSize: 100, basePrice: 1200, barHeight: 4 },
+        { name: '칸디루(흡혈메기)', rarity: 'epic', minSize: 5, maxSize: 15, basePrice: 300, barHeight: 9 },
+        { name: '울프 피쉬', rarity: 'secret', minSize: 40, maxSize: 70, basePrice: 2000, barHeight: 5 },
+    ]
 };
 
 const regions = {
     '강': { levelRequired: 1, background: 'assets/river.jpg' },
-    '바다': { levelRequired: 5, background: 'assets/sea.jpg' },
+    '바다': { levelRequired: 5, background: 'assets/sea.png' },
     '심해': { levelRequired: 10, background: 'assets/deep_sea.jpg' },
-    '전설의 호수': { levelRequired: 20, background: 'assets/legendary_lake.jpg' }
+    '늪지대': { levelRequired: 20 },
+    '아마존 강': { levelRequired: 30 }
 };
 
 // 게임 상태
@@ -51,16 +66,24 @@ const gameState = {
     inventory: [],
     currentRegion: '강', // 현재 지역
     caughtFish: [], // 도감용으로 잡은 물고기 이름 저장
+    releasedFishCounts: {}, // 방생한 물고기 종류 및 횟수 저장
     releasedRareFishCount: 0, // 희귀 물고기 방생 횟수
     rareFishBonusGiven: false, // 희귀 물고기 보너스 지급 여부
+    secretFishEncounters: 0, // 시크릿 물고기 조우 횟수
     // 낚시 프로세스 상태
     fishing: false,
-    // 1단계: 추적 미니게임
+    // 1단계: PC 추적 미니게임
     trackingMinigameActive: false,
     trackingTime: 0,
     trackingInterval: null,
     fishMovementInterval: null,
     trackingMinigameTimeout: null,
+    // 1단계: 모바일 진동 미니게임
+    mobilePattern1Active: false,
+    vibrationCount: 0,
+    successCount: 0,
+    canTap: false,
+    tapRegisteredThisTurn: false,
     // 2단계: 막대 미니게임
     barMinigameActive: false,
     barMinigameStartTime: 0,
@@ -70,6 +93,8 @@ const gameState = {
     playerBar: { y: 100, height: 90, speed: 0, maxSpeed: 5 }, // 기본 막대 높이 100, 기본 낚싯대 페널티 -10
     barFish: { y: 100, height: 25, speed: 0, direction: 1 },
     isMouseDown: false,
+    isUpPressed: false, // 모바일용 위 버튼
+    isDownPressed: false, // 모바일용 아래 버튼
     // 장비 및 스탯
     currentRod: {
         id: 'rod_default',
@@ -101,7 +126,11 @@ const gameState = {
             { id: 'rod_legend', name: '전설의 낚싯대', desc: '참치 1마리 잡기', condition: () => gameState.achievements.fishCaught['참치'] >= 1, owned: false, stats: { barHeightBonus: 25, trackingBonus: 1.2, biteTimeReduction: 1200, minigameInvincibilityTime: 800 } },
             { id: 'rod_sea_special', name: '바다의 낚싯대', desc: '바다 지역 도달 시 해금', cost: 300, condition: () => gameState.level >= regions['바다'].levelRequired, owned: false, stats: { barHeightBonus: 12, trackingBonus: 0.7, biteTimeReduction: 700, minigameInvincibilityTime: 500 } },
             { id: 'rod_deep_sea_special', name: '심해의 낚싯대', desc: '심해 지역 도달 시 해금', cost: 300, condition: () => gameState.level >= regions['심해'].levelRequired, owned: false, stats: { barHeightBonus: 18, trackingBonus: 0.9, biteTimeReduction: 900, minigameInvincibilityTime: 600 } },
-            { id: 'rod_legendary_special', name: '호수의 낚싯대', desc: '전설의 호수 도달 시 해금', cost: 300, condition: () => gameState.level >= regions['전설의 호수'].levelRequired, owned: false, stats: { barHeightBonus: 30, trackingBonus: 1.5, biteTimeReduction: 1500, minigameInvincibilityTime: 1000 } },
+            { id: 'rod_amazon_special', name: '아마존의 낚싯대', desc: '아마존 강 지역 도달 시 해금', cost: 500, condition: () => gameState.level >= regions['아마존 강'].levelRequired, owned: false, stats: { barHeightBonus: 30, trackingBonus: 1.5, biteTimeReduction: 1500, minigameInvincibilityTime: 1000 } },
+            { id: 'rod_basket', name: '바구니 낚싯대', desc: '인벤토리에 30마리 이상 보유', condition: () => gameState.inventory.length >= 30, owned: false, stats: { barHeightBonus: -5, trackingBonus: 0.5, biteTimeReduction: 500, minigameInvincibilityTime: 500 } },
+            { id: 'rod_golden', name: '황금 낚싯대', desc: '5000골드 이상 보유', condition: () => gameState.gold >= 5000, owned: false, stats: { barHeightBonus: 10, trackingBonus: 0.2, biteTimeReduction: 800, minigameInvincibilityTime: 300 } },
+            { id: 'rod_water', name: '물 낚싯대', desc: '바다 도감 100% 달성', condition: () => { const seaFish = fishTypesByRegion['바다']; const caughtSeaFish = seaFish.filter(f => gameState.caughtFish.includes(f.name)); return seaFish.length === caughtSeaFish.length; }, owned: false, stats: { barHeightBonus: 15, trackingBonus: 0.8, biteTimeReduction: 800, minigameInvincibilityTime: 800 } },
+            { id: 'rod_black', name: '블랙 낚싯대', desc: '시크릿 물고기 2회 조우', condition: () => gameState.secretFishEncounters >= 2, owned: false, stats: { barHeightBonus: 5, trackingBonus: 0.5, biteTimeReduction: 500, minigameInvincibilityTime: 0 } },
         ]
     }
 };
@@ -117,15 +146,31 @@ function startFishing() {
     setButtonState(true);
     const biteWaitTime = 7500 - gameState.playerStats.biteTimeReduction;
     setTimeout(() => {
-        if (gameState.fishing) startTrackingMinigame();
+        if (!gameState.fishing) return;
+        if (document.body.classList.contains('mobile-mode')) {
+            startMobileTrackingMinigame();
+        } else {
+            startTrackingMinigame();
+        }
     }, biteWaitTime);
 }
 
 function resetAllFishingState() {
     gameState.fishing = false;
+    // PC 미니게임 상태
     gameState.trackingMinigameActive = false;
+    // 모바일 미니게임 상태
+    gameState.mobilePattern1Active = false;
+    gameState.vibrationCount = 0;
+    gameState.successCount = 0;
+    gameState.canTap = false;
+    gameState.tapRegisteredThisTurn = false;
+    // 공용 미니게임 상태
     gameState.barMinigameActive = false;
     gameState.isMouseDown = false;
+    gameState.isUpPressed = false;
+    gameState.isDownPressed = false;
+    gameState.potentialFish = null;
     clearInterval(gameState.trackingInterval);
     clearInterval(gameState.fishMovementInterval);
     clearTimeout(gameState.trackingMinigameTimeout);
@@ -137,7 +182,7 @@ function resetAllFishingState() {
 }
 
 // ====================================
-// 1단계: 추적 미니게임
+// 1단계: PC 추적 미니게임
 // ====================================
 
 function startTrackingMinigame() {
@@ -164,6 +209,91 @@ function endTrackingMinigame() {
         return;
     }
 
+    let possibleRarities = [];
+    if (finalTrackingTime >= 8) possibleRarities.push('legendary', 'epic');
+    if (finalTrackingTime >= 6) possibleRarities.push('rare');
+    if (finalTrackingTime >= 4) possibleRarities.push('uncommon');
+    possibleRarities.push('common');
+
+    selectFishByRarity(possibleRarities);
+}
+
+// ====================================
+// 1단계: 모바일 진동 미니게임
+// ====================================
+
+function startMobileTrackingMinigame() {
+    gameState.mobilePattern1Active = true;
+    gameState.vibrationCount = 0;
+    gameState.successCount = 0;
+    updateGameMessage(`성공: ${gameState.successCount} / 14`);
+    scheduleNextVibration();
+}
+
+function scheduleNextVibration() {
+    if (!gameState.mobilePattern1Active) return; // 게임 중단 시 종료
+    if (gameState.vibrationCount >= 14) {
+        endMobileTrackingMinigame();
+        return;
+    }
+    const delay = Math.random() * 750 + 250; // 0.25초 ~ 1초 사이
+    setTimeout(triggerVibration, delay);
+}
+
+function triggerVibration() {
+    if (!gameState.mobilePattern1Active) return;
+    navigator.vibrate(100);
+    gameState.canTap = true;
+    gameState.tapRegisteredThisTurn = false;
+    gameState.vibrationCount++;
+
+    setTimeout(() => {
+        if (!gameState.tapRegisteredThisTurn) {
+            gameState.successCount = Math.max(0, gameState.successCount - 1);
+        }
+        gameState.canTap = false;
+        scheduleNextVibration();
+    }, 250); // 0.25초의 탭 유효 시간
+}
+
+function endMobileTrackingMinigame() {
+    gameState.mobilePattern1Active = false;
+    let possibleRarities = [];
+    const success = gameState.successCount;
+
+    if (success >= 13) possibleRarities.push('legendary', 'epic', 'rare', 'uncommon', 'common');
+    else if (success >= 10) possibleRarities.push('epic', 'rare', 'uncommon', 'common');
+    else if (success >= 7) possibleRarities.push('rare', 'uncommon', 'common');
+    else if (success >= 4) possibleRarities.push('uncommon', 'common');
+    else possibleRarities.push('common');
+
+    updateGameMessage(`${success}번 성공!`);
+    selectFishByRarity(possibleRarities);
+}
+
+// ====================================
+// 공통 물고기 선택 로직
+// ====================================
+
+function selectFishByRarity(possibleRarities) {
+    // 시크릿 물고기 (울프 피쉬) 등장 조건 확인
+    if (gameState.currentRegion === '아마존 강') {
+        const piranhaReleased = gameState.releasedFishCounts['피라냐'] || 0;
+        const candiruReleased = gameState.releasedFishCounts['칸디루(흡혈메기)'] || 0;
+        const tetraReleased = gameState.releasedFishCounts['네온 테트라'] || 0;
+
+        if ((piranhaReleased >= 3 || candiruReleased >= 3 || tetraReleased >= 3) && Math.random() < 0.1) {
+            const wolfFish = fishTypesByRegion['아마존 강'].find(f => f.rarity === 'secret');
+            if (wolfFish) {
+                gameState.potentialFish = wolfFish;
+                gameState.secretFishEncounters++; // 시크릿 조우 횟수 증가
+                showSecretAppearanceMessage(); // "시크릿 출현!!" 메시지 표시
+                startBarMinigame();
+                return; // 일반 물고기 선택 로직 건너뛰기
+            }
+        }
+    }
+
     const fishInRegion = fishTypesByRegion[gameState.currentRegion];
     if (fishInRegion.length === 0) {
         updateGameMessage('이곳에는 물고기가 없는 것 같다...');
@@ -171,30 +301,30 @@ function endTrackingMinigame() {
         return;
     }
 
-    // 추적 시간에 따라 잡을 수 있는 희귀도 목록 결정
-    let possibleRarities = [];
-    if (finalTrackingTime >= 8) possibleRarities.push('legendary', 'epic');
-    if (finalTrackingTime >= 6) possibleRarities.push('rare');
-    if (finalTrackingTime >= 4) possibleRarities.push('uncommon');
-    possibleRarities.push('common');
-
-    // 현재 지역에 존재하는 희귀도만 필터링
     const availableRaritiesInRegion = [...new Set(fishInRegion.map(f => f.rarity))];
     const finalPossibleRarities = possibleRarities.filter(r => availableRaritiesInRegion.includes(r));
-    
+
     if (finalPossibleRarities.length === 0) {
-        // 이 경우는 거의 없지만, 만약을 위해 가장 흔한 등급으로 설정
-        finalPossibleRarities.push('common');
+        updateGameMessage('아쉽지만, 물고기가 입질만 하고 도망갔습니다...');
+        resetAllFishingState();
+        return;
     }
 
-    // 최종 희귀도 결정 (가장 높은 등급 우선)
     const potentialRarity = finalPossibleRarities[0];
-
     const availableFish = fishInRegion.filter(f => f.rarity === potentialRarity);
     gameState.potentialFish = availableFish[Math.floor(Math.random() * availableFish.length)];
+
+    if (gameState.currentRod.id === 'rod_basket' && (gameState.potentialFish.rarity === 'legendary' || gameState.potentialFish.rarity === 'secret')) {
+        const nonLegendaryFish = fishInRegion.filter(f => f.rarity === 'rare' || f.rarity === 'uncommon' || f.rarity === 'common');
+        if (nonLegendaryFish.length > 0) {
+            gameState.potentialFish = nonLegendaryFish[Math.floor(Math.random() * nonLegendaryFish.length)];
+            updateGameMessage('거대한 기운이... 평범한 무언가로 바뀌었다?');
+        }
+    }
     
     startBarMinigame();
 }
+
 
 // ====================================
 // 2단계: 막대 미니게임
@@ -206,7 +336,6 @@ function startBarMinigame() {
     gameState.barMinigameStartTime = Date.now();
     gameState.catchProgress = 50;
     
-    // 낚싯대 및 물고기 스탯 적용
     gameState.playerBar.height = 100 + gameState.playerStats.barHeightBonus;
     gameState.barFish.height = gameState.potentialFish.barHeight;
 
@@ -215,15 +344,18 @@ function startBarMinigame() {
 }
 
 function barMinigameLoop() {
-    const difficulty = { common: 1, uncommon: 1.5, rare: 2, epic: 2.5, legendary: 3.5 };
+    const difficulty = { common: 1, uncommon: 1.5, rare: 2, epic: 2.5, legendary: 3.5, secret: 5 };
     const fishSpeed = difficulty[gameState.potentialFish.rarity] || 1;
-
     const acceleration = 0.25;
-    if (gameState.isMouseDown) {
+
+    if (gameState.isMouseDown || gameState.isUpPressed) {
         gameState.playerBar.speed -= acceleration;
+    } else if (gameState.isDownPressed) {
+        gameState.playerBar.speed += acceleration;
     } else {
         gameState.playerBar.speed += acceleration;
     }
+
     gameState.playerBar.speed = Math.max(-gameState.playerBar.maxSpeed, Math.min(gameState.playerBar.maxSpeed, gameState.playerBar.speed));
     gameState.playerBar.y += gameState.playerBar.speed;
     const controlBarContainerHeight = 360;
@@ -244,7 +376,7 @@ function barMinigameLoop() {
     if (playerTop < fishBottom && playerBottom > fishTop) {
         gameState.catchProgress += 0.4;
     } else {
-        if (!isInvincible) { // Only decrease if not invincible
+        if (!isInvincible) {
             const elapsedTime = Date.now() - gameState.barMinigameStartTime;
             if (elapsedTime > 3000) {
                 gameState.catchProgress -= 0.2;
@@ -263,6 +395,14 @@ function barMinigameLoop() {
         updateGameMessage('낚싯줄이 끊어졌다...');
         resetAllFishingState();
     } else {
+        if (gameState.potentialFish.rarity === 'secret' && gameState.potentialFish.name === '울프 피쉬') {
+            const elapsedTime = Date.now() - gameState.barMinigameStartTime;
+            if (elapsedTime > 6000) {
+                updateGameMessage('울프 피쉬가 너무 빨라 놓쳤습니다!');
+                resetAllFishingState();
+                return;
+            }
+        }
         gameState.barMinigameLoop = requestAnimationFrame(barMinigameLoop);
     }
 }
@@ -271,27 +411,54 @@ function barMinigameLoop() {
 // 최종 결과 처리
 // ====================================
 
-function catchFish(fish) {
-    const size = Math.floor(Math.random() * (fish.maxSize - fish.minSize + 1)) + fish.minSize;
-    const price = Math.round(fish.basePrice * (size / fish.minSize));
+function catchFish(fish, isBonus = false) {
+    let fishToCatch = { ...fish };
+    let size = Math.floor(Math.random() * (fishToCatch.maxSize - fishToCatch.minSize + 1)) + fishToCatch.minSize;
+    let price = Math.round(fishToCatch.basePrice * (size / fishToCatch.minSize));
+    let isGolden = false;
+
+    if (gameState.currentRod.id === 'rod_golden' && Math.random() < 0.1 && !isBonus) {
+        price *= 2;
+        isGolden = true;
+    }
+
     const xpGained = Math.round(price * 1.5);
 
-    if (gameState.achievements.fishCaught[fish.name] !== undefined) {
-        gameState.achievements.fishCaught[fish.name]++;
+    if (gameState.achievements.fishCaught[fishToCatch.name] !== undefined) {
+        gameState.achievements.fishCaught[fishToCatch.name]++;
     } else {
-        gameState.achievements.fishCaught[fish.name] = 1;
+        gameState.achievements.fishCaught[fishToCatch.name] = 1;
     }
 
-    // 도감에 새로운 물고기 추가
-    if (!gameState.caughtFish.includes(fish.name)) {
-        gameState.caughtFish.push(fish.name);
+    if (!gameState.caughtFish.includes(fishToCatch.name)) {
+        gameState.caughtFish.push(fishToCatch.name);
     }
 
-    gameState.inventory.push({ name: fish.name, size: size, price: price, rarity: fish.rarity });
-    console.log('Current inventory:', gameState.inventory); // Debugging line
-    addXp(xpGained);
+    const inventoryFish = { name: fishToCatch.name, size: size, price: price, rarity: fishToCatch.rarity };
+    if (isGolden) {
+        inventoryFish.isGolden = true;
+    }
+    gameState.inventory.push(inventoryFish);
+    
+    if (!isBonus) {
+        addXp(xpGained);
+        let message = `${fishToCatch.name} (${size}cm)를 낚았다! (+${xpGained}XP)`;
+        if (isGolden) {
+            message = `황금 ${fishToCatch.name} (${size}cm)를 낚았다! (+${xpGained}XP)`;
+        }
+        updateGameMessage(message);
+    } else {
+        updateGameMessage(`바구니에서 ${fishToCatch.name} (${size}cm)가 추가로 나왔다!`);
+    }
 
-    updateGameMessage(`${fish.name} (${size}cm)를 낚았다! (+${xpGained}XP)`);
+    if (gameState.currentRod.id === 'rod_basket' && Math.random() < 0.2 && !isBonus) {
+        const fishInRegion = fishTypesByRegion[gameState.currentRegion].filter(f => f.rarity !== 'legendary' && f.rarity !== 'secret');
+        if (fishInRegion.length > 0) {
+            const bonusFish = fishInRegion[Math.floor(Math.random() * fishInRegion.length)];
+            catchFish(bonusFish, true);
+        }
+    }
+    
     updatePlayerInfo();
 }
 
@@ -302,11 +469,11 @@ function addXp(amount) {
         gameState.xp -= gameState.xpToNextLevel;
         gameState.xpToNextLevel = Math.round(gameState.xpToNextLevel * 1.5);
         updateGameMessage(`레벨 업! 레벨 ${gameState.level} 달성!`);
-        updateRegionUI(); // 레벨업 시 지역 UI 업데이트
+        updateRegionUI();
     }
 }
 
-const regionOrder = ['강', '바다', '심해', '전설의 호수'];
+const regionOrder = ['강', '바다', '심해', '늪지대', '아마존 강'];
 
 function changeRegion(regionName) {
     if (!regions[regionName] || gameState.currentRegion === regionName) return;
@@ -325,7 +492,6 @@ function changeRegion(regionName) {
     const currentRegionIndex = regionOrder.indexOf(gameState.currentRegion);
     const targetRegionIndex = regionOrder.indexOf(regionName);
 
-    // 다음 지역으로 이동하는 경우에만 도감 조건 확인
     if (targetRegionIndex > currentRegionIndex) {
         const fishInCurrentRegion = fishTypesByRegion[gameState.currentRegion];
         const caughtInCurrentRegion = fishInCurrentRegion.filter(fish => gameState.caughtFish.includes(fish.name));
@@ -358,16 +524,26 @@ function sellFish(index) {
 function releaseFish(index) {
     if (index < 0 || index >= gameState.inventory.length) return;
     const fish = gameState.inventory.splice(index, 1)[0];
-    addXp(1); // 1 XP 고정
-    updateGameMessage(`${fish.name}을(를) 방생했습니다. (+1XP)`);
+    
+    let xpGained = 1;
+    if (gameState.currentRod.id === 'rod_black') {
+        xpGained = 10;
+    } else if (fish.isGolden) {
+        xpGained = 15;
+    }
+    addXp(xpGained);
+    updateGameMessage(`${fish.name}을(를) 방생했습니다. (+${xpGained}XP)`);
 
-    // 히든 요소: 희귀 등급 물고기 5번 이상 방생 시 보너스 XP
+    if (!gameState.releasedFishCounts[fish.name]) {
+        gameState.releasedFishCounts[fish.name] = 0;
+    }
+    gameState.releasedFishCounts[fish.name]++;
+
     if (fish.rarity === 'rare') {
         gameState.releasedRareFishCount++;
         if (gameState.releasedRareFishCount >= 5 && !gameState.rareFishBonusGiven) {
             addXp(250);
             gameState.rareFishBonusGiven = true;
-            // 게임 내 표시하지 않음 (사용자 요청)
             console.log("희귀 물고기 5마리 방생 보너스! 250 XP 획득!");
         }
     }
@@ -394,7 +570,6 @@ function handleAchievementItem(itemId) {
     const item = gameState.shopItems.achievement.find(i => i.id === itemId);
     if (!item || item.owned || !item.condition()) return;
 
-    // 비용이 있는 아이템인지 확인
     if (item.cost) {
         if (gameState.gold >= item.cost) {
             gameState.gold -= item.cost;
@@ -406,7 +581,6 @@ function handleAchievementItem(itemId) {
             updateGameMessage('골드가 부족합니다.');
         }
     } else {
-        // 비용이 없는 기존 도전과제 아이템
         item.owned = true;
         equipRod(item);
         updateShopUI();
@@ -419,7 +593,6 @@ function handleAchievementItem(itemId) {
 
 function saveGame() {
     try {
-        // 함수 등 저장할 수 없는 부분을 제외하고 순수 데이터만 추출
         const saveData = {
             level: gameState.level,
             xp: gameState.xp,
@@ -428,10 +601,11 @@ function saveGame() {
             inventory: gameState.inventory,
             currentRegion: gameState.currentRegion,
             caughtFish: gameState.caughtFish,
+            releasedFishCounts: gameState.releasedFishCounts,
             releasedRareFishCount: gameState.releasedRareFishCount,
             rareFishBonusGiven: gameState.rareFishBonusGiven,
+            secretFishEncounters: gameState.secretFishEncounters,
             achievements: gameState.achievements,
-            // 상점 아이템은 소유 여부만 저장
             shopItemsOwned: {
                 gold: gameState.shopItems.gold.map(item => ({ id: item.id, owned: item.owned })),
                 achievement: gameState.shopItems.achievement.map(item => ({ id: item.id, owned: item.owned }))
@@ -457,34 +631,42 @@ function loadGame() {
 
         const saveData = JSON.parse(savedDataJSON);
 
-        // 기본 gameState에 불러온 데이터를 덮어쓰기
-        gameState.level = saveData.level;
-        gameState.xp = saveData.xp;
-        gameState.xpToNextLevel = saveData.xpToNextLevel;
-        gameState.gold = saveData.gold;
-        gameState.inventory = saveData.inventory;
-        gameState.currentRegion = saveData.currentRegion;
-        gameState.caughtFish = saveData.caughtFish;
-        gameState.releasedRareFishCount = saveData.releasedRareFishCount;
-        gameState.rareFishBonusGiven = saveData.rareFishBonusGiven;
-        gameState.achievements = saveData.achievements;
+        gameState.level = saveData.level || 1;
+        gameState.xp = saveData.xp || 0;
+        gameState.xpToNextLevel = saveData.xpToNextLevel || 10;
+        gameState.gold = saveData.gold || 10;
+        gameState.inventory = saveData.inventory || [];
+        gameState.currentRegion = saveData.currentRegion || '강';
+        gameState.caughtFish = saveData.caughtFish || [];
+        gameState.releasedFishCounts = saveData.releasedFishCounts || {};
+        gameState.releasedRareFishCount = saveData.releasedRareFishCount || 0;
+        gameState.rareFishBonusGiven = saveData.rareFishBonusGiven || false;
+        gameState.secretFishEncounters = saveData.secretFishEncounters || 0;
+        gameState.achievements = saveData.achievements || { fishCaught: { '붕어': 0, '참치': 0 } };
 
-        // 상점 아이템 소유 상태 업데이트
-        saveData.shopItemsOwned.gold.forEach(savedItem => {
-            const gameItem = gameState.shopItems.gold.find(i => i.id === savedItem.id);
-            if (gameItem) gameItem.owned = savedItem.owned;
-        });
-        saveData.shopItemsOwned.achievement.forEach(savedItem => {
-            const gameItem = gameState.shopItems.achievement.find(i => i.id === savedItem.id);
-            if (gameItem) gameItem.owned = savedItem.owned;
-        });
+        if (saveData.shopItemsOwned) {
+            if (saveData.shopItemsOwned.gold) {
+                saveData.shopItemsOwned.gold.forEach(savedItem => {
+                    const gameItem = gameState.shopItems.gold.find(i => i.id === savedItem.id);
+                    if (gameItem) gameItem.owned = savedItem.owned;
+                });
+            }
+            if (saveData.shopItemsOwned.achievement) {
+                saveData.shopItemsOwned.achievement.forEach(savedItem => {
+                    const gameItem = gameState.shopItems.achievement.find(i => i.id === savedItem.id);
+                    if (gameItem) gameItem.owned = savedItem.owned;
+                });
+            }
+        }
 
-        // 현재 장착 장비 설정
-        const allRods = [...gameState.shopItems.gold, ...gameState.shopItems.achievement];
-        const equippedRod = allRods.find(r => r.id === saveData.currentRodId) || gameState.shopItems.gold[0];
-        equipRod(equippedRod);
+        const allRods = getAllRods();
+        const equippedRod = allRods.find(r => r.id === saveData.currentRodId);
+        if (equippedRod) {
+            equipRod(equippedRod);
+        } else {
+            equipRod(allRods.find(r => r.id === 'rod_default'));
+        }
 
-        // 모든 UI 업데이트
         updatePlayerInfo();
         updateShopUI();
         updateInventoryUI();
@@ -494,14 +676,27 @@ function loadGame() {
     } catch (e) {
         console.error("불러오기 중 오류 발생:", e);
         updateGameMessage('게임 불러오기에 실패했습니다.');
+        Object.assign(gameState, {
+            level: 1,
+            xp: 0,
+            xpToNextLevel: 10,
+            gold: 10,
+            inventory: [],
+            currentRegion: '강',
+            caughtFish: [],
+            releasedFishCounts: {},
+            releasedRareFishCount: 0,
+            rareFishBonusGiven: false,
+            secretFishEncounters: 0,
+        });
     }
 }
 
 function deleteSaveData() {
     try {
         localStorage.removeItem('fishingman_save');
-        sessionStorage.setItem('showDeleteMessage', 'true'); // 삭제 메시지 표시 플래그
-        location.reload(); // 페이지 새로고침
+        sessionStorage.setItem('showDeleteMessage', 'true');
+        location.reload();
     } catch (e) {
         console.error("삭제 중 오류 발생:", e);
         updateGameMessage('데이터 삭제에 실패했습니다.');
@@ -511,7 +706,14 @@ function deleteSaveData() {
 
 function equipRod(item) {
     gameState.currentRod = item;
-    // playerStats를 현재 장착한 장비의 스탯으로 교체
     gameState.playerStats = { ...item.stats };
     updateGameMessage(`${item.name}을(를) 장착했습니다.`);
+}
+
+function getAllRods() {
+    return [
+        { id: 'rod_default', name: '기본 낚싯대', stats: { barHeightBonus: -10, trackingBonus: 0, biteTimeReduction: 0, minigameInvincibilityTime: 0 }, owned: true },
+        ...gameState.shopItems.gold,
+        ...gameState.shopItems.achievement
+    ];
 }

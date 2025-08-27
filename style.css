@@ -11,6 +11,7 @@ body {
     border: 2px solid #000;
     padding: 20px;
     background-color: #fff;
+    position: relative; /* For secret message positioning */
 }
 
 #fishing-spot {
@@ -25,7 +26,7 @@ body {
     overflow: hidden; /* Fish shouldn't go outside */
     background-size: cover;
     background-position: center;
-    transition: background-image 1s ease-in-out;
+    transition: background-image 1s ease-in-out, background-color 1s ease-in-out;
 }
 
 #fishing-spot.minigame-active {
@@ -54,6 +55,30 @@ body {
     border-radius: 10px;
     font-size: 18px;
     z-index: 30; /* Always on top */
+}
+
+#secret-message {
+    position: absolute;
+    top: 40%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    font-size: 48px;
+    font-weight: bold;
+    color: red;
+    text-shadow: 2px 2px 4px #000;
+    z-index: 100;
+    pointer-events: none; /* 메시지가 다른 UI를 가리지 않도록 */
+    animation: pulse 1s infinite;
+}
+
+#secret-message.hidden {
+    display: none;
+}
+
+@keyframes pulse {
+    0% { transform: translate(-50%, -50%) scale(1); }
+    50% { transform: translate(-50%, -50%) scale(1.1); }
+    100% { transform: translate(-50%, -50%) scale(1); }
 }
 
 #region-container {
@@ -119,34 +144,6 @@ button:disabled {
 /* 초기화 버튼은 오른쪽 아래에 배치되므로, 별도 스타일 */
 #bottom-right-buttons {
     justify-content: flex-end; /* 오른쪽 정렬 */
-}
-
-#region-container {
-    display: flex;
-    gap: 10px;
-    margin-bottom: 10px;
-    justify-content: center;
-    flex-wrap: wrap;
-}
-
-.region-button {
-    padding: 8px 15px;
-    font-size: 14px;
-    cursor: pointer;
-    border: 1px solid #000;
-    background-color: #f0f0f0;
-}
-
-.region-button.active {
-    background-color: #4CAF50;
-    color: white;
-    border: 2px solid #000;
-}
-
-.region-button:disabled {
-    background-color: #666;
-    color: #aaa;
-    cursor: not-allowed;
 }
 
 #player-info {
@@ -219,8 +216,8 @@ button:disabled {
     /* top is set by JS */
 }
 
-/* Shop Modal Styles */
-#shop-modal {
+/* Modal Styles */
+.modal {
     position: fixed; /* Stay in place */
     z-index: 50; /* Sit on top */
     left: 0;
@@ -229,15 +226,18 @@ button:disabled {
     height: 100%;
     overflow: auto; /* Enable scroll if needed */
     background-color: rgba(0,0,0,0.6); /* Black w/ opacity */
+    display: flex;
+    justify-content: center;
+    align-items: center;
 }
 
-#shop-modal.hidden {
+.modal.hidden {
     display: none;
 }
 
 .modal-content {
     background-color: #fefefe;
-    margin: 10% auto; /* 10% from the top and centered */
+    margin: 0; /* Centered by flexbox */
     padding: 20px;
     border: 1px solid #888;
     width: 80%;
@@ -253,27 +253,27 @@ button:disabled {
     padding-bottom: 10px;
 }
 
-#close-shop-button {
+.modal-header .close-button {
     color: #aaa;
     font-size: 28px;
     font-weight: bold;
     background: none;
     border: none;
     padding: 0;
+    cursor: pointer;
 }
 
-#close-shop-button:hover,
-#close-shop-button:focus {
+.modal-header .close-button:hover,
+.modal-header .close-button:focus {
     color: black;
     text-decoration: none;
-    cursor: pointer;
 }
 
 .modal-body {
     margin-top: 20px;
 }
 
-.shop-tabs {
+.tabs {
     overflow: hidden;
     border-bottom: 1px solid #ccc;
     margin-bottom: 15px;
@@ -309,16 +309,16 @@ button:disabled {
     display: block;
 }
 
-#gold-shop-list, #achievement-shop-list {
+.item-list {
     list-style-type: none;
     padding: 0;
-    height: 200px;
+    height: 400px;
     overflow-y: auto;
     border: 1px solid #ddd;
     padding: 5px;
 }
 
-#gold-shop-list li, #achievement-shop-list li {
+.item-list li {
     display: flex;
     justify-content: space-between;
     align-items: center;
@@ -327,131 +327,21 @@ button:disabled {
     flex-wrap: wrap; /* For smaller screens */
 }
 
-#achievement-shop-list .item-desc {
+.item-list li:last-child {
+    border-bottom: none;
+}
+
+.item-list .item-desc {
     font-size: 12px;
     color: #555;
     width: 100%;
 }
 
-#gold-shop-list li.equipped, #achievement-shop-list li.equipped {
+.item-list li.equipped {
     background-color: #e0efff;
 }
 
-/* Inventory Modal Styles (reusing shop modal styles) */
-#inventory-modal {
-    position: fixed;
-    z-index: 50;
-    left: 0;
-    top: 0;
-    width: 100%;
-    height: 100%;
-    overflow: auto;
-    background-color: rgba(0,0,0,0.6);
-}
-
-#inventory-modal.hidden {
-    display: none;
-}
-
-#close-inventory-button {
-    color: #aaa;
-    font-size: 28px;
-    font-weight: bold;
-    background: none;
-    border: none;
-    padding: 0;
-}
-
-#close-inventory-button:hover,
-#close-inventory-button:focus {
-    color: black;
-    text-decoration: none;
-    cursor: pointer;
-}
-
-.inventory-tabs { /* Reusing shop-tabs styles */
-    overflow: hidden;
-    border-bottom: 1px solid #ccc;
-    margin-bottom: 15px;
-}
-
-.inventory-tabs .tab-link { /* Reusing tab-link styles */
-    background-color: #f1f1f1;
-    float: left;
-    border: none;
-    outline: none;
-    cursor: pointer;
-    padding: 14px 16px;
-    transition: 0.3s;
-    font-size: 17px;
-    border-radius: 5px 5px 0 0;
-}
-
-.inventory-tabs .tab-link:hover {
-    background-color: #ddd;
-}
-
-.inventory-tabs .tab-link.active {
-    background-color: #ccc;
-}
-
-#fish-inventory-tab, #equipment-inventory-tab { /* Reusing tab-content styles */
-    display: none;
-    padding: 6px 12px;
-    border-top: none;
-}
-
-#fish-inventory-tab.active, #equipment-inventory-tab.active {
-    display: block;
-}
-
-#fish-list, #equipment-list {
-    list-style-type: none;
-    padding: 0;
-    height: 200px;
-    overflow-y: auto;
-    border: 1px solid #ddd;
-    padding: 5px;
-}
-
-#fish-list li, #equipment-list li {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    padding: 8px;
-    border-bottom: 1px solid #f0f0f0;
-}
-
-#fish-list li:last-child, #equipment-list li:last-child {
-    border-bottom: none;
-}
-
 /* Collection Modal Styles */
-#collection-modal {
-    position: fixed;
-    z-index: 60; /* Higher than other modals */
-    left: 0;
-    top: 0;
-    width: 100%;
-    height: 100%;
-    overflow: auto;
-    background-color: rgba(0,0,0,0.6);
-}
-
-#collection-modal.hidden {
-    display: none;
-}
-
-#close-collection-button {
-    color: #aaa;
-    font-size: 28px;
-    font-weight: bold;
-    background: none;
-    border: none;
-    padding: 0;
-    cursor: pointer;
-}
-
 .collection-grid {
     display: grid;
     grid-template-columns: repeat(auto-fill, minmax(100px, 1fr));
@@ -478,12 +368,24 @@ button:disabled {
 
 /* Rarity Colors */
 .rarity-common { background-color: #e0e0e0; } /* Gray */
-.rarity-uncommon { background-color: #c8e6c9; } /* Light Green */
-.rarity-rare { background-color: #a5d6a7; } /* Green */
+.rarity-uncommon { background-color: #4CAF50; color: white; } /* Green */
+.rarity-rare { background-color: #2196F3; color: white; } /* Blue */
 .rarity-epic {
     background: linear-gradient(to right, violet, indigo, blue, green, yellow, orange, red);
     color: white; /* For better contrast on rainbow */
 }
+.rarity-secret {
+    background: linear-gradient(to right, #ff0000, #ff7f00, #ffff00, #00ff00, #0000ff, #4b0082, #8f00ff);
+    color: white;
+    font-weight: bold;
+}
+.collection-card.not-caught.rarity-secret {
+    background: #333;
+    border: 2px solid transparent;
+    border-image: linear-gradient(to right, #ff0000, #ff7f00, #ffff00, #00ff00, #0000ff, #4b0082, #8f00ff);
+    border-image-slice: 1;
+}
+
 
 /* Reset Confirmation Modal Styles */
 #reset-confirmation-modal {
@@ -577,4 +479,106 @@ button:disabled {
     0% { opacity: 1; }
     80% { opacity: 1; }
     100% { opacity: 0; display: none; }
+}
+
+.golden-fish {
+    background-color: #ffd700 !important; /* Gold color, important to override rarity color */
+    color: #000 !important; /* Black text for readability */
+}
+
+/* Mobile Mode Styles */
+.mobile-mode #game-container {
+    width: 100%;
+    padding: 5px;
+    border: none;
+}
+
+.mobile-mode h1 {
+    font-size: 1.5em;
+}
+
+.mobile-mode #fishing-spot {
+    height: 300px;
+}
+
+.mobile-mode #ui-container {
+    height: auto;
+    flex-direction: column;
+    gap: 10px;
+}
+
+.mobile-mode #top-row,
+.mobile-mode #bottom-row {
+    flex-direction: column;
+    gap: 10px;
+}
+
+.mobile-mode #top-left-buttons,
+.mobile-mode #top-right-buttons,
+.mobile-mode #bottom-left-buttons,
+.mobile-mode #bottom-right-buttons {
+    flex-direction: column;
+    width: 100%;
+}
+
+.mobile-mode #region-container {
+    order: -1; /* Move regions to the top */
+    width: 100%;
+}
+
+.mobile-mode #player-info {
+    flex-direction: column;
+    align-items: center;
+    gap: 5px;
+}
+
+.mobile-mode .modal-content {
+    width: 95%;
+    margin: 0;
+    height: 90vh; /* 90% of viewport height */
+    display: flex;
+    flex-direction: column;
+}
+
+.mobile-mode .modal-body {
+    flex-grow: 1;
+    overflow-y: auto;
+}
+
+.mobile-mode .item-list {
+    height: auto; /* Let it grow */
+    min-height: 200px; /* Minimum height */
+}
+
+.mobile-mode button {
+    padding: 15px 10px; /* Taller buttons for easier tapping */
+    font-size: 1em;
+}
+
+#mobile-controls {
+    position: absolute;
+    top: 50%;
+    right: 40px;
+    transform: translateY(-50%);
+    display: none; /* Hidden by default */
+    flex-direction: column;
+    gap: 50px;
+    z-index: 100;
+}
+
+.mobile-mode #mobile-controls {
+    display: flex; /* Visible only in mobile mode */
+}
+
+#mobile-controls button {
+    width: 80px;
+    height: 80px;
+    font-size: 2.5em;
+    border-radius: 50%;
+    border: 3px solid white;
+    background-color: rgba(0, 0, 0, 0.5);
+    color: white;
+    -webkit-user-select: none; /* Safari */
+    -ms-user-select: none; /* IE 10+ */
+    user-select: none; /* Standard syntax */
 }

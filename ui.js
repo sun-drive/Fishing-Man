@@ -47,24 +47,39 @@ const cancelDeleteButton = document.getElementById('cancel-delete-button');
 // ====================================
 
 function updatePlayerInfo() {
-    playerLevelEl.textContent = gameState.level;
-    playerXpEl.textContent = gameState.xp;
-    xpToNextLevelEl.textContent = gameState.xpToNextLevel;
-    playerGoldEl.textContent = gameState.gold;
+    if (playerLevelEl) playerLevelEl.textContent = gameState.level;
+    if (playerXpEl) playerXpEl.textContent = gameState.xp;
+    if (xpToNextLevelEl) xpToNextLevelEl.textContent = gameState.xpToNextLevel;
+    if (playerGoldEl) playerGoldEl.textContent = gameState.gold;
 }
 
 function updateGameMessage(message) {
+    if (!fishingSpotEl) return null;
     const existingMessage = fishingSpotEl.querySelector('.game-message');
     if (existingMessage) existingMessage.remove();
     const messageEl = document.createElement('p');
     messageEl.textContent = message;
     messageEl.className = 'game-message';
     fishingSpotEl.appendChild(messageEl);
+    return messageEl;
 }
 
 function setButtonState(isFishing) {
+    if (!castButton) return;
     castButton.disabled = isFishing;
     castButton.textContent = isFishing ? '낚시 중...' : '낚싯대 던지기';
+}
+
+function showSecretAppearanceMessage() {
+    const secretMessageEl = document.getElementById('secret-message');
+    if (secretMessageEl) {
+        secretMessageEl.textContent = '시크릿 출현!!';
+        secretMessageEl.classList.remove('hidden');
+        // Hide the message after a few seconds
+        setTimeout(() => {
+            secretMessageEl.classList.add('hidden');
+        }, 3000);
+    }
 }
 
 // ====================================
@@ -72,19 +87,22 @@ function setButtonState(isFishing) {
 // ====================================
 
 function setFishingSpotCursor(isActive) {
-    fishingSpotEl.classList.toggle('minigame-active', isActive);
+    if (fishingSpotEl) fishingSpotEl.classList.toggle('minigame-active', isActive);
 }
 
 function showFishIcon() {
-    fishIconEl.style.display = 'block';
-    moveFishIcon();
+    if (fishIconEl) {
+        fishIconEl.style.display = 'block';
+        moveFishIcon();
+    }
 }
 
 function hideFishIcon() {
-    fishIconEl.style.display = 'none';
+    if (fishIconEl) fishIconEl.style.display = 'none';
 }
 
 function moveFishIcon() {
+    if (!fishingSpotEl || !fishIconEl) return;
     const spotRect = fishingSpotEl.getBoundingClientRect();
     const fishSize = fishIconEl.getBoundingClientRect().width;
     const newTop = Math.random() * (spotRect.height - fishSize);
@@ -98,17 +116,17 @@ function moveFishIcon() {
 // ====================================
 
 function showBarMinigame() {
-    barMinigameContainerEl.classList.remove('hidden');
+    if (barMinigameContainerEl) barMinigameContainerEl.classList.remove('hidden');
 }
 
 function hideBarMinigame() {
-    barMinigameContainerEl.classList.add('hidden');
+    if (barMinigameContainerEl) barMinigameContainerEl.classList.add('hidden');
 }
 
 function updateBarMinigameUI() {
-    playerControlBarEl.style.top = `${gameState.playerBar.y}px`;
-    barFishIconEl.style.top = `${gameState.barFish.y}px`;
-    catchProgressEl.style.height = `${gameState.catchProgress}%`;
+    if (playerControlBarEl) playerControlBarEl.style.top = `${gameState.playerBar.y}px`;
+    if (barFishIconEl) barFishIconEl.style.top = `${gameState.barFish.y}px`;
+    if (catchProgressEl) catchProgressEl.style.height = `${gameState.catchProgress}%`;
 }
 
 // ====================================
@@ -116,11 +134,14 @@ function updateBarMinigameUI() {
 // ====================================
 
 function updateRegionUI() {
+    if (!regionContainerEl) return;
     regionContainerEl.innerHTML = '';
-    for (const regionName in regions) {
+    regionOrder.forEach(regionName => {
         const region = regions[regionName];
+        if (!region) return;
+
         const button = document.createElement('button');
-        button.textContent = `${regionName} (Lv.${region.levelRequired})`;
+        button.textContent = `${regionName} (Lv.${region.levelRequired})`
         button.dataset.region = regionName;
         button.classList.add('region-button');
 
@@ -131,9 +152,26 @@ function updateRegionUI() {
             button.classList.add('active');
         }
         regionContainerEl.appendChild(button);
+    });
+    
+    if (!fishingSpotEl) return;
+    const currentRegionData = regions[gameState.currentRegion];
+    if (currentRegionData && currentRegionData.background) {
+        fishingSpotEl.style.backgroundImage = `url('/${currentRegionData.background}')`;
+        fishingSpotEl.style.backgroundColor = '';
+    } else {
+        fishingSpotEl.style.backgroundImage = 'none';
+        switch (gameState.currentRegion) {
+            case '늪지대':
+                fishingSpotEl.style.backgroundColor = '#556B2F';
+                break;
+            case '아마존 강':
+                fishingSpotEl.style.backgroundColor = '#006400';
+                break;
+            default:
+                fishingSpotEl.style.backgroundColor = '#add8e6';
+        }
     }
-    // 배경 이미지 업데이트
-    fishingSpotEl.style.backgroundImage = `url('${regions[gameState.currentRegion].background}')`;
 }
 
 // ====================================
@@ -141,16 +179,18 @@ function updateRegionUI() {
 // ====================================
 
 function showShop() {
-    updateShopUI();
-    shopModalEl.classList.remove('hidden');
+    if (shopModalEl) {
+        updateShopUI();
+        shopModalEl.classList.remove('hidden');
+    }
 }
 
 function hideShop() {
-    shopModalEl.classList.add('hidden');
+    if (shopModalEl) shopModalEl.classList.add('hidden');
 }
 
 function updateShopUI() {
-    // 골드 상점 목록 생성
+    if (!goldShopListEl || !achievementShopListEl) return;
     goldShopListEl.innerHTML = '';
     gameState.shopItems.gold.forEach(item => {
         const li = document.createElement('li');
@@ -161,25 +201,21 @@ function updateShopUI() {
         goldShopListEl.appendChild(li);
     });
 
-    // 도전과제 상점 목록 생성
     achievementShopListEl.innerHTML = '';
     gameState.shopItems.achievement.forEach(item => {
         const isUnlocked = item.condition();
         const isEquipped = gameState.currentRod.id === item.id;
         const li = document.createElement('li');
-        
         let buttonText = '';
         let buttonDisabled = false;
-
-        if (item.cost) { // 비용이 있는 아이템
+        if (item.cost) {
             const canAfford = gameState.gold >= item.cost;
             buttonText = isEquipped ? '장착중' : (item.owned ? '보유중' : `구매 (${item.cost}G)`);
             buttonDisabled = !isUnlocked || item.owned || !canAfford;
-        } else { // 비용이 없는 아이템
+        } else {
             buttonText = isEquipped ? '장착중' : (item.owned ? '보유중' : '획득');
             buttonDisabled = !isUnlocked || item.owned;
         }
-
         li.innerHTML = `${item.name} <span class="item-desc">(${item.desc})</span> <button class="claim-button" data-item-id="${item.id}" ${buttonDisabled ? 'disabled' : ''}>${buttonText}</button>`;
         if (isEquipped) li.classList.add('equipped');
         achievementShopListEl.appendChild(li);
@@ -191,36 +227,51 @@ function updateShopUI() {
 // ====================================
 
 function showInventory() {
-    updateInventoryUI();
-    inventoryModalEl.classList.remove('hidden');
+    if (inventoryModalEl) {
+        updateInventoryUI();
+        inventoryModalEl.classList.remove('hidden');
+    }
 }
 
 function hideInventory() {
-    inventoryModalEl.classList.add('hidden');
+    if (inventoryModalEl) inventoryModalEl.classList.add('hidden');
 }
 
 function updateInventoryUI() {
-    // 물고기 목록 업데이트
+    if (!fishListEl || !equipmentListEl) return;
     fishListEl.innerHTML = '';
     gameState.inventory.forEach((fish, index) => {
         const li = document.createElement('li');
+        const fishName = fish.isGolden ? `황금 ${fish.name}` : fish.name;
         li.innerHTML = `
-            ${fish.name} (${fish.size}cm) - ${fish.price}골드
+            ${fishName} (${fish.size}cm) - ${fish.price}골드
             <div class="fish-actions">
                 <button class="sell-fish-button" data-index="${index}">판매</button>
                 <button class="release-fish-button" data-index="${index}">방생</button>
             </div>
         `;
-        li.classList.add(`rarity-${fish.rarity}`); // 희귀도별 배경색
+        li.classList.add(`rarity-${fish.rarity}`);
+        if (fish.isGolden) {
+            li.classList.add('golden-fish');
+        }
         fishListEl.appendChild(li);
     });
 
-    // 장비 목록 업데이트 (현재는 기본 낚싯대만)
     equipmentListEl.innerHTML = '';
-    const li = document.createElement('li');
-    let statsText = `(막대길이: ${gameState.currentRod.stats.barHeightBonus > 0 ? '+' : ''}${gameState.currentRod.stats.barHeightBonus}, 트래킹+${gameState.currentRod.stats.trackingBonus}s, 입질-${gameState.currentRod.stats.biteTimeReduction / 1000}s)`;
-    li.innerHTML = `${gameState.currentRod.name} (장착중) <br> ${statsText}`;
-    equipmentListEl.appendChild(li);
+    const allRods = getAllRods();
+    const ownedRods = allRods.filter(rod => rod.owned);
+    ownedRods.forEach(rod => {
+        const li = document.createElement('li');
+        const isEquipped = gameState.currentRod.id === rod.id;
+        let statsText = `(막대길이: ${rod.stats.barHeightBonus > 0 ? '+' : ''}${rod.stats.barHeightBonus}, 트래킹+${rod.stats.trackingBonus}s, 입질-${rod.stats.biteTimeReduction / 1000}s)`;
+        if (isEquipped) {
+            li.innerHTML = `${rod.name} (장착중) <br> ${statsText}`;
+            li.classList.add('equipped');
+        } else {
+            li.innerHTML = `${rod.name} <br> ${statsText} <button class="equip-button" data-item-id="${rod.id}">장착하기</button>`;
+        }
+        equipmentListEl.appendChild(li);
+    });
 }
 
 // ====================================
@@ -228,32 +279,33 @@ function updateInventoryUI() {
 // ====================================
 
 function showCollection() {
-    updateCollectionUI();
-    collectionModalEl.classList.remove('hidden');
+    if (collectionModalEl) {
+        updateCollectionUI();
+        collectionModalEl.classList.remove('hidden');
+    }
 }
 
 function hideCollection() {
-    collectionModalEl.classList.add('hidden');
+    if (collectionModalEl) collectionModalEl.classList.add('hidden');
 }
 
 function updateCollectionUI() {
+    if (!collectionListEl) return;
     collectionListEl.innerHTML = '';
-    for (const regionName in fishTypesByRegion) {
+    regionOrder.forEach(regionName => {
         const regionTitle = document.createElement('h3');
         regionTitle.textContent = regionName;
         collectionListEl.appendChild(regionTitle);
-
         const fishGrid = document.createElement('div');
         fishGrid.className = 'collection-grid';
-
         const fishInRegion = fishTypesByRegion[regionName];
-        fishInRegion.forEach(fish => {
+        const normalFish = fishInRegion.filter(f => f.rarity !== 'secret');
+        const secretFish = fishInRegion.find(f => f.rarity === 'secret');
+        normalFish.forEach(fish => {
             const isCaught = gameState.caughtFish.includes(fish.name);
             const fishCard = document.createElement('div');
             fishCard.className = 'collection-card';
-
             const fishNameSpan = document.createElement('span');
-
             if (isCaught) {
                 fishNameSpan.textContent = fish.name;
                 fishCard.classList.add(`rarity-${fish.rarity}`);
@@ -264,8 +316,27 @@ function updateCollectionUI() {
             fishCard.appendChild(fishNameSpan);
             fishGrid.appendChild(fishCard);
         });
+        if (secretFish) {
+            const caughtInRegion = fishInRegion.filter(f => gameState.caughtFish.includes(f.name) && f.rarity !== 'secret');
+            const isSecretUnlocked = caughtInRegion.length >= 4;
+            const isCaught = gameState.caughtFish.includes(secretFish.name);
+            const fishCard = document.createElement('div');
+            fishCard.className = 'collection-card';
+            const fishNameSpan = document.createElement('span');
+            if (isSecretUnlocked) {
+                if (isCaught) {
+                    fishNameSpan.textContent = secretFish.name;
+                    fishCard.classList.add(`rarity-${secretFish.rarity}`);
+                } else {
+                    fishNameSpan.textContent = '???';
+                    fishCard.classList.add('not-caught', 'rarity-secret');
+                }
+                 fishCard.appendChild(fishNameSpan);
+                 fishGrid.appendChild(fishCard);
+            } 
+        }
         collectionListEl.appendChild(fishGrid);
-    }
+    });
 }
 
 // ====================================
@@ -273,11 +344,11 @@ function updateCollectionUI() {
 // ====================================
 
 function showResetConfirmation() {
-    resetConfirmationModalEl.classList.remove('hidden');
+    if (resetConfirmationModalEl) resetConfirmationModalEl.classList.remove('hidden');
 }
 
 function hideResetConfirmation() {
-    resetConfirmationModalEl.classList.add('hidden');
+    if (resetConfirmationModalEl) resetConfirmationModalEl.classList.add('hidden');
 }
 
 function showDeletedMessage() {
@@ -286,20 +357,70 @@ function showDeletedMessage() {
         messageEl.className = 'account-deleted-message';
         messageEl.textContent = '계정이 삭제 되었습니다';
         document.body.appendChild(messageEl);
-
         sessionStorage.removeItem('showDeleteMessage');
-
-        // 메시지 띄운 후 3초 뒤 사라지도록
         setTimeout(() => {
             messageEl.remove();
         }, 3000);
     }
 }
 
+document.addEventListener('DOMContentLoaded', () => {
+    // 탭 기능 초기화
+    function initializeTabs(containerEl) {
+        if (!containerEl) return;
+        const tabLinks = containerEl.querySelectorAll('.tab-link');
+        const tabContents = containerEl.nextElementSibling.querySelectorAll('.tab-content');
 
-// 초기 UI 업데이트
-updatePlayerInfo();
-updateGameMessage('낚시를 시작해보세요!');
-updateShopUI();
-updateInventoryUI();
-updateRegionUI();
+        tabLinks.forEach(link => {
+            link.addEventListener('click', () => {
+                const tabId = link.dataset.tab;
+                tabLinks.forEach(l => l.classList.remove('active'));
+                link.classList.add('active');
+                tabContents.forEach(content => {
+                    if (content.id === tabId) {
+                        content.classList.add('active');
+                    } else {
+                        content.classList.remove('active');
+                    }
+                });
+            });
+        });
+    }
+
+    initializeTabs(shopTabsContainerEl);
+    initializeTabs(inventoryTabsContainerEl);
+    showDeletedMessage();
+
+    if (equipmentListEl) {
+        equipmentListEl.addEventListener('click', (e) => {
+            if (e.target.classList.contains('equip-button')) {
+                const itemId = e.target.dataset.itemId;
+                const itemToEquip = getAllRods().find(r => r.id === itemId);
+                if (itemToEquip) {
+                    equipRod(itemToEquip);
+                    updateInventoryUI();
+                    updateShopUI();
+                }
+            }
+        });
+    }
+
+    // 초기 UI 업데이트
+    updatePlayerInfo();
+    updateGameMessage('낚시를 시작해보세요!');
+    updateShopUI();
+    updateInventoryUI();
+    updateRegionUI();
+    showDeletedMessage();
+
+    // 초기 탭 설정
+    const initialShopTab = document.querySelector('.shop-tabs .tab-link[data-tab="gold-shop"]');
+    if (initialShopTab) initialShopTab.classList.add('active');
+    const initialShopContent = document.getElementById('gold-shop');
+    if (initialShopContent) initialShopContent.classList.add('active');
+
+    const initialInventoryTab = document.querySelector('.inventory-tabs .tab-link[data-tab="fish-inventory"]');
+    if(initialInventoryTab) initialInventoryTab.classList.add('active');
+    const initialInventoryContent = document.getElementById('fish-inventory');
+    if(initialInventoryContent) initialInventoryContent.classList.add('active');
+});
