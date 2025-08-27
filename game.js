@@ -64,13 +64,12 @@ const gameState = {
     xpToNextLevel: 10,
     gold: 10,
     inventory: [],
-    currentRegion: '강', // 현재 지역
-    caughtFish: [], // 도감용으로 잡은 물고기 이름 저장
-    releasedFishCounts: {}, // 방생한 물고기 종류 및 횟수 저장
-    releasedRareFishCount: 0, // 희귀 물고기 방생 횟수
-    rareFishBonusGiven: false, // 희귀 물고기 보너스 지급 여부
-    secretFishEncounters: 0, // 시크릿 물고기 조우 횟수
-    // 낚시 프로세스 상태
+    currentRegion: '강',
+    caughtFish: [],
+    releasedFishCounts: {},
+    releasedRareFishCount: 0,
+    rareFishBonusGiven: false,
+    secretFishEncounters: 0,
     fishing: false,
     // 1단계: PC 추적 미니게임
     trackingMinigameActive: false,
@@ -78,24 +77,21 @@ const gameState = {
     trackingInterval: null,
     fishMovementInterval: null,
     trackingMinigameTimeout: null,
-    // 1단계: 모바일 진동 미니게임
-    mobilePattern1Active: false,
-    vibrationCount: 0,
-    successCount: 0,
-    canTap: false,
-    tapRegisteredThisTurn: false,
+    // 1단계: 모바일 리듬 게임
+    rhythmGameActive: false,
+    rhythmAttemptCount: 0,
+    rhythmSuccessCount: 0,
     // 2단계: 막대 미니게임
     barMinigameActive: false,
     barMinigameStartTime: 0,
     barMinigameLoop: null,
-    potentialFish: null, // rarity 대신 fish 객체 전체를 저장
-    catchProgress: 50, // 0-100
-    playerBar: { y: 100, height: 90, speed: 0, maxSpeed: 5 }, // 기본 막대 높이 100, 기본 낚싯대 페널티 -10
+    potentialFish: null,
+    catchProgress: 50,
+    playerBar: { y: 100, height: 90, speed: 0, maxSpeed: 5 },
     barFish: { y: 100, height: 25, speed: 0, direction: 1 },
     isMouseDown: false,
-    isUpPressed: false, // 모바일용 위 버튼
-    isDownPressed: false, // 모바일용 아래 버튼
-    // 장비 및 스탯
+    isUpPressed: false,
+    isDownPressed: false,
     currentRod: {
         id: 'rod_default',
         name: '기본 낚싯대',
@@ -105,9 +101,8 @@ const gameState = {
         barHeightBonus: -10,
         trackingBonus: 0,
         biteTimeReduction: 0,
-        minigameInvincibilityTime: 0 // 초기 무적시간 0
+        minigameInvincibilityTime: 0
     },
-    // 상점 및 도전과제
     achievements: {
         fishCaught: { '붕어': 0, '참치': 0 },
     },
@@ -148,7 +143,7 @@ function startFishing() {
     setTimeout(() => {
         if (!gameState.fishing) return;
         if (document.body.classList.contains('mobile-mode')) {
-            startMobileTrackingMinigame();
+            startRhythmGame();
         } else {
             startTrackingMinigame();
         }
@@ -157,15 +152,8 @@ function startFishing() {
 
 function resetAllFishingState() {
     gameState.fishing = false;
-    // PC 미니게임 상태
     gameState.trackingMinigameActive = false;
-    // 모바일 미니게임 상태
-    gameState.mobilePattern1Active = false;
-    gameState.vibrationCount = 0;
-    gameState.successCount = 0;
-    gameState.canTap = false;
-    gameState.tapRegisteredThisTurn = false;
-    // 공용 미니게임 상태
+    gameState.rhythmGameActive = false;
     gameState.barMinigameActive = false;
     gameState.isMouseDown = false;
     gameState.isUpPressed = false;
@@ -177,6 +165,7 @@ function resetAllFishingState() {
     cancelAnimationFrame(gameState.barMinigameLoop);
     hideFishIcon();
     hideBarMinigame();
+    hideRhythmGame();
     setButtonState(false);
     setFishingSpotCursor(false);
 }
@@ -219,52 +208,58 @@ function endTrackingMinigame() {
 }
 
 // ====================================
-// 1단계: 모바일 진동 미니게임
+// 1단계: 모바일 리듬 게임
 // ====================================
 
-function startMobileTrackingMinigame() {
-    gameState.mobilePattern1Active = true;
-    gameState.vibrationCount = 0;
-    gameState.successCount = 0;
-    updateGameMessage(`성공: ${gameState.successCount} / 14`);
-    scheduleNextVibration();
+function startRhythmGame() {
+    gameState.rhythmGameActive = true;
+    gameState.rhythmAttemptCount = 0;
+    gameState.rhythmSuccessCount = 0;
+    showRhythmGame();
+    updateGameMessage(`성공: 0 / 10`);
+    scheduleNextBar();
 }
 
-function scheduleNextVibration() {
-    if (!gameState.mobilePattern1Active) return; // 게임 중단 시 종료
-    if (gameState.vibrationCount >= 14) {
-        endMobileTrackingMinigame();
+function scheduleNextBar() {
+    if (!gameState.rhythmGameActive) return;
+    if (gameState.rhythmAttemptCount >= 10) {
+        endRhythmGame();
         return;
     }
-    const delay = Math.random() * 750 + 250; // 0.25초 ~ 1초 사이
-    setTimeout(triggerVibration, delay);
+    // 애니메이션 시간(2초)을 기반으로 최소 간격 계산
+    const minInterval = 2000 / 6; // 1/6 화면 너비에 해당하는 시간
+    const randomInterval = Math.random() * 1000 + minInterval;
+    setTimeout(spawnRhythmBar, randomInterval);
 }
 
-function triggerVibration() {
-    if (!gameState.mobilePattern1Active) return;
-    navigator.vibrate(100);
-    gameState.canTap = true;
-    gameState.tapRegisteredThisTurn = false;
-    gameState.vibrationCount++;
+function spawnRhythmBar() {
+    if (!gameState.rhythmGameActive) return;
+    gameState.rhythmAttemptCount++;
+    const bar = document.createElement('div');
+    bar.className = 'rhythm-bar';
+    document.getElementById('rhythm-bar-container').appendChild(bar);
 
-    setTimeout(() => {
-        if (!gameState.tapRegisteredThisTurn) {
-            gameState.successCount = Math.max(0, gameState.successCount - 1);
+    bar.addEventListener('animationend', () => {
+        bar.remove();
+        // 탭으로 성공하지 못하고 애니메이션이 끝나면 실패로 간주
+        if (gameState.rhythmGameActive) { // 게임이 아직 끝나지 않았을 때만
+             gameState.rhythmSuccessCount = Math.max(0, gameState.rhythmSuccessCount - 1);
+             updateGameMessage(`실패! 성공: ${gameState.rhythmSuccessCount} / 10`);
         }
-        gameState.canTap = false;
-        scheduleNextVibration();
-    }, 250); // 0.25초의 탭 유효 시간
+    });
+    scheduleNextBar();
 }
 
-function endMobileTrackingMinigame() {
-    gameState.mobilePattern1Active = false;
+function endRhythmGame() {
+    hideRhythmGame();
+    gameState.rhythmGameActive = false;
     let possibleRarities = [];
-    const success = gameState.successCount;
+    const success = gameState.rhythmSuccessCount;
 
-    if (success >= 13) possibleRarities.push('legendary', 'epic', 'rare', 'uncommon', 'common');
-    else if (success >= 10) possibleRarities.push('epic', 'rare', 'uncommon', 'common');
-    else if (success >= 7) possibleRarities.push('rare', 'uncommon', 'common');
-    else if (success >= 4) possibleRarities.push('uncommon', 'common');
+    if (success >= 9) possibleRarities.push('legendary', 'epic', 'rare', 'uncommon', 'common');
+    else if (success >= 7) possibleRarities.push('epic', 'rare', 'uncommon', 'common');
+    else if (success >= 5) possibleRarities.push('rare', 'uncommon', 'common');
+    else if (success >= 3) possibleRarities.push('uncommon', 'common');
     else possibleRarities.push('common');
 
     updateGameMessage(`${success}번 성공!`);
@@ -276,7 +271,6 @@ function endMobileTrackingMinigame() {
 // ====================================
 
 function selectFishByRarity(possibleRarities) {
-    // 시크릿 물고기 (울프 피쉬) 등장 조건 확인
     if (gameState.currentRegion === '아마존 강') {
         const piranhaReleased = gameState.releasedFishCounts['피라냐'] || 0;
         const candiruReleased = gameState.releasedFishCounts['칸디루(흡혈메기)'] || 0;
@@ -286,10 +280,10 @@ function selectFishByRarity(possibleRarities) {
             const wolfFish = fishTypesByRegion['아마존 강'].find(f => f.rarity === 'secret');
             if (wolfFish) {
                 gameState.potentialFish = wolfFish;
-                gameState.secretFishEncounters++; // 시크릿 조우 횟수 증가
-                showSecretAppearanceMessage(); // "시크릿 출현!!" 메시지 표시
+                gameState.secretFishEncounters++;
+                showSecretAppearanceMessage();
                 startBarMinigame();
-                return; // 일반 물고기 선택 로직 건너뛰기
+                return;
             }
         }
     }

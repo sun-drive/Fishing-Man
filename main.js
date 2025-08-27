@@ -3,26 +3,22 @@ document.addEventListener('DOMContentLoaded', () => {
     const pcButton = document.getElementById('pc-button');
     const mobileButton = document.getElementById('mobile-button');
 
-    // 게임 초기화 로직을 별도 함수로 분리
     function initializeGame() {
-        // 모바일 컨트롤 버튼
         const upArrowBtn = document.getElementById('up-arrow-btn');
         const downArrowBtn = document.getElementById('down-arrow-btn');
 
-        // 기존의 모든 이벤트 리스너와 초기화 코드를 여기에 넣습니다.
-        loadGame(); // 게임 시작 시 자동으로 데이터 불러오기
+        loadGame();
         updatePlayerInfo();
         updateGameMessage('낚시를 시작해보세요!');
-        showDeletedMessage(); // 삭제 메시지 확인 및 표시
+        showDeletedMessage();
 
         // ====================================
         // 이벤트 리스너
         // ====================================
 
-        // 낚시 시작 버튼
         castButton.addEventListener('click', startFishing);
 
-        // 1단계: PC 추적 미니게임 리스너
+        // 1단계: PC 추적 미니게임
         fishIconEl.addEventListener('mouseover', () => {
             if (!gameState.trackingMinigameActive) return;
             gameState.trackingInterval = setInterval(() => {
@@ -35,30 +31,36 @@ document.addEventListener('DOMContentLoaded', () => {
             clearInterval(gameState.trackingInterval);
         });
 
-        // 1단계: 모바일 진동 미니게임 리스너
+        // 1단계: 모바일 리듬 게임
         fishingSpotEl.addEventListener('touchstart', (e) => {
-            if (gameState.mobilePattern1Active && gameState.canTap) {
-                e.preventDefault();
-                gameState.successCount++;
-                gameState.canTap = false; // 중복 탭 방지
-                gameState.tapRegisteredThisTurn = true; // 성공 탭 등록
-                
-                // 메시지를 업데이트하고 시각적 피드백을 적용합니다.
-                const messageEl = updateGameMessage(`성공: ${gameState.successCount} / 14`);
+            if (!gameState.rhythmGameActive) return;
+            e.preventDefault();
+
+            const targetBox = document.getElementById('rhythm-target').getBoundingClientRect();
+            const bars = document.querySelectorAll('.rhythm-bar');
+            let success = false;
+
+            bars.forEach(bar => {
+                const barBox = bar.getBoundingClientRect();
+                // 막대가 타겟 영역에 겹치는지 확인
+                if (barBox.left < targetBox.right && barBox.right > targetBox.left) {
+                    gameState.rhythmSuccessCount++;
+                    updateGameMessage(`성공: ${gameState.rhythmSuccessCount} / 10`);
+                    bar.remove(); // 성공한 막대는 즉시 제거
+                    success = true;
+                }
+            });
+
+            if (success) {
+                const messageEl = updateGameMessage(`성공: ${gameState.rhythmSuccessCount} / 10`);
                 if (messageEl) {
-                    messageEl.style.transition = 'none';
                     messageEl.style.color = 'lightgreen';
-                    messageEl.style.transform = 'translateX(-50%) scale(1.2)';
-                    setTimeout(() => {
-                        messageEl.style.transition = 'color 0.2s, transform 0.2s';
-                        messageEl.style.color = 'white';
-                        messageEl.style.transform = 'translateX(-50%) scale(1)';
-                    }, 100);
+                    setTimeout(() => { messageEl.style.color = 'white'; }, 200);
                 }
             }
         });
 
-        // 2단계: 막대 미니게임 리스너 (PC)
+        // 2단계: 막대 미니게임 (PC)
         document.addEventListener('mousedown', (e) => {
             if (gameState.barMinigameActive && e.target.tagName !== 'BUTTON') {
                 gameState.isMouseDown = true;
@@ -70,7 +72,7 @@ document.addEventListener('DOMContentLoaded', () => {
             }
         });
 
-        // 2단계: 막대 미니게임 리스너 (모바일)
+        // 2단계: 막대 미니게임 (모바일)
         upArrowBtn.addEventListener('touchstart', (e) => {
             e.preventDefault();
             if (gameState.barMinigameActive) gameState.isUpPressed = true;
@@ -88,93 +90,54 @@ document.addEventListener('DOMContentLoaded', () => {
             gameState.isDownPressed = false;
         });
 
-
-        // 상점 열기/닫기 버튼
+        // UI 버튼 리스너
         shopButton.addEventListener('click', showShop);
         closeShopButtonEl.addEventListener('click', hideShop);
-
-        // 상점 탭 전환 리스너
-        shopTabsContainerEl.addEventListener('click', (e) => {
-            if (!e.target.matches('.tab-link')) return;
-
-            const tabId = e.target.dataset.tab;
-            const tabContainer = e.target.closest('.tabs');
-
-            tabContainer.querySelectorAll('.tab-link').forEach(tab => tab.classList.remove('active'));
-            e.target.classList.add('active');
-
-            const contentContainer = tabContainer.parentElement.querySelector(`#${tabId}`);
-            tabContainer.parentElement.querySelectorAll('.tab-content').forEach(content => content.classList.remove('active'));
-            contentContainer.classList.add('active');
-        });
-
-        // 상점 아이템 구매/획득 리스너
-        shopModalEl.addEventListener('click', (e) => {
-            if (e.target.matches('.buy-button')) {
-                purchaseGoldItem(e.target.dataset.itemId);
-            } else if (e.target.matches('.claim-button')) {
-                handleAchievementItem(e.target.dataset.itemId);
-            }
-        });
-
-        // 기타 UI 버튼
         inventoryButton.addEventListener('click', showInventory);
         closeInventoryButtonEl.addEventListener('click', hideInventory);
-
-        // 도감 열기/닫기 버튼
         collectionButton.addEventListener('click', showCollection);
         closeCollectionButtonEl.addEventListener('click', hideCollection);
-
-        // 인벤토리 탭 전환 리스너
-        inventoryTabsContainerEl.addEventListener('click', (e) => {
-            if (!e.target.matches('.tab-link')) return;
-
-            const tabId = e.target.dataset.tab;
-            const tabContainer = e.target.closest('.tabs');
-
-            tabContainer.querySelectorAll('.tab-link').forEach(tab => tab.classList.remove('active'));
-            e.target.classList.add('active');
-
-            const contentContainer = tabContainer.parentElement.querySelector(`#${tabId}`);
-            tabContainer.parentElement.querySelectorAll('.tab-content').forEach(content => content.classList.remove('active'));
-            contentContainer.classList.add('active');
-        });
-
-        // 인벤토리 물고기 판매/방생 리스너
-        fishListEl.addEventListener('click', (e) => {
-            if (e.target.matches('.sell-fish-button')) {
-                const index = parseInt(e.target.dataset.index);
-                sellFish(index);
-            } else if (e.target.matches('.release-fish-button')) {
-                const index = parseInt(e.target.dataset.index);
-                releaseFish(index);
-            }
-        });
-
-        // 지역 변경 리스너
-        regionContainerEl.addEventListener('click', (e) => {
-            if (e.target.matches('.region-button')) {
-                changeRegion(e.target.dataset.region);
-            }
-        });
-
-        // 저장/불러오기 리스너
         saveButton.addEventListener('click', saveGame);
         loadButton.addEventListener('click', loadGame);
-
-        // 초기화 리스너
         resetButton.addEventListener('click', showResetConfirmation);
         confirmDeleteButton.addEventListener('click', deleteSaveData);
         cancelDeleteButton.addEventListener('click', hideResetConfirmation);
+
+        // 탭 전환 리스너
+        [shopTabsContainerEl, inventoryTabsContainerEl].forEach(container => {
+            if (!container) return;
+            container.addEventListener('click', (e) => {
+                if (!e.target.matches('.tab-link')) return;
+                const tabId = e.target.dataset.tab;
+                const tabContainer = e.target.closest('.tabs');
+                tabContainer.querySelectorAll('.tab-link').forEach(tab => tab.classList.remove('active'));
+                e.target.classList.add('active');
+                const contentContainer = tabContainer.parentElement;
+                contentContainer.querySelectorAll('.tab-content').forEach(content => content.classList.remove('active'));
+                contentContainer.querySelector(`#${tabId}`).classList.add('active');
+            });
+        });
+
+        // 아이템/장비 관련 리스너
+        shopModalEl.addEventListener('click', (e) => {
+            if (e.target.matches('.buy-button')) purchaseGoldItem(e.target.dataset.itemId);
+            else if (e.target.matches('.claim-button')) handleAchievementItem(e.target.dataset.itemId);
+        });
+        fishListEl.addEventListener('click', (e) => {
+            if (e.target.matches('.sell-fish-button')) sellFish(parseInt(e.target.dataset.index));
+            else if (e.target.matches('.release-fish-button')) releaseFish(parseInt(e.target.dataset.index));
+        });
+        regionContainerEl.addEventListener('click', (e) => {
+            if (e.target.matches('.region-button')) changeRegion(e.target.dataset.region);
+        });
     }
 
-    // PC 버튼 클릭 시
+    // 모드 선택 리스너
     pcButton.addEventListener('click', () => {
         deviceSelectionModal.classList.add('hidden');
         initializeGame();
     });
 
-    // 모바일 버튼 클릭 시
     mobileButton.addEventListener('click', () => {
         document.body.classList.add('mobile-mode');
         deviceSelectionModal.classList.add('hidden');

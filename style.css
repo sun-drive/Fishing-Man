@@ -582,3 +582,43 @@ button:disabled {
     -ms-user-select: none; /* IE 10+ */
     user-select: none; /* Standard syntax */
 }
+
+/* Rhythm Game Styles */
+#rhythm-game-ui.hidden {
+    display: none;
+}
+
+#rhythm-target {
+    position: absolute;
+    left: 10%;
+    top: 0;
+    bottom: 0;
+    width: 15%;
+    background-color: rgba(0, 255, 0, 0.3);
+    border-left: 2px solid green;
+    border-right: 2px solid green;
+    z-index: 15;
+}
+
+#rhythm-bar-container {
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    z-index: 16;
+}
+
+.rhythm-bar {
+    position: absolute;
+    right: -5%; /* Start off-screen */
+    width: 2%;
+    height: 100%;
+    background-color: red;
+    animation: moveLeft 2s linear forwards;
+}
+
+@keyframes moveLeft {
+    from { right: -5%; }
+    to { right: 105%; }
+}
