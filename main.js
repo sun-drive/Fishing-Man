@@ -31,34 +31,7 @@ document.addEventListener('DOMContentLoaded', () => {
             clearInterval(gameState.trackingInterval);
         });
 
-        // 1단계: 모바일 리듬 게임
-        fishingSpotEl.addEventListener('touchstart', (e) => {
-            if (!gameState.rhythmGameActive) return;
-            e.preventDefault();
-
-            const targetBox = document.getElementById('rhythm-target').getBoundingClientRect();
-            const bars = document.querySelectorAll('.rhythm-bar');
-            let success = false;
-
-            bars.forEach(bar => {
-                const barBox = bar.getBoundingClientRect();
-                // 막대가 타겟 영역에 겹치는지 확인
-                if (barBox.left < targetBox.right && barBox.right > targetBox.left) {
-                    gameState.rhythmSuccessCount++;
-                    updateGameMessage(`성공: ${gameState.rhythmSuccessCount} / 10`);
-                    bar.remove(); // 성공한 막대는 즉시 제거
-                    success = true;
-                }
-            });
-
-            if (success) {
-                const messageEl = updateGameMessage(`성공: ${gameState.rhythmSuccessCount} / 10`);
-                if (messageEl) {
-                    messageEl.style.color = 'lightgreen';
-                    setTimeout(() => { messageEl.style.color = 'white'; }, 200);
-                }
-            }
-        });
+        // 1단계: 모바일 리듬 게임 (이제 이벤트는 game.js에서 동적으로 생성된 요소에 직접 추가됩니다)
 
         // 2단계: 막대 미니게임 (PC)
         document.addEventListener('mousedown', (e) => {
@@ -122,10 +95,20 @@ document.addEventListener('DOMContentLoaded', () => {
         shopModalEl.addEventListener('click', (e) => {
             if (e.target.matches('.buy-button')) purchaseGoldItem(e.target.dataset.itemId);
             else if (e.target.matches('.claim-button')) handleAchievementItem(e.target.dataset.itemId);
+            else if (e.target.matches('.craft-bait-button')) craftBait(e.target.dataset.baitId);
         });
         fishListEl.addEventListener('click', (e) => {
             if (e.target.matches('.sell-fish-button')) sellFish(parseInt(e.target.dataset.index));
             else if (e.target.matches('.release-fish-button')) releaseFish(parseInt(e.target.dataset.index));
+        });
+        baitListEl.addEventListener('click', (e) => {
+            if (e.target.matches('.equip-bait-button')) {
+                const baitId = e.target.dataset.baitId;
+                const baitIndex = gameState.baitInventory.findIndex(b => b.id === baitId);
+                if (baitIndex !== -1) {
+                    equipBait(baitIndex);
+                }
+            }
         });
         regionContainerEl.addEventListener('click', (e) => {
             if (e.target.matches('.region-button')) changeRegion(e.target.dataset.region);

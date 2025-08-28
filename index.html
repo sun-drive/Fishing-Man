@@ -26,9 +26,8 @@
     <h1>낚시 웹게임</h1>
     <div id="game-container">
         <div id="fishing-spot">
-            <div id="rhythm-game-ui" class="hidden">
-                <div id="rhythm-target"></div>
-                <div id="rhythm-bar-container"></div>
+            <div id="rhythm-game-container" class="hidden">
+                <!-- Circles will be spawned in here dynamically by game.js -->
             </div>
             <p>낚시터</p>
             <div id="fish-icon"></div>
@@ -86,6 +85,7 @@
                 <div class="tabs shop-tabs">
                     <button class="tab-link" data-tab="gold-shop">골드 상점</button>
                     <button class="tab-link" data-tab="achievement-shop">도전과제 상점</button>
+                    <button class="tab-link" data-tab="bait-crafting">미끼 제작</button>
                 </div>
 
                 <div id="gold-shop" class="tab-content">
@@ -97,6 +97,12 @@
                 <div id="achievement-shop" class="tab-content">
                     <h3>도전과제 상점</h3>
                     <ul id="achievement-shop-list" class="item-list">
+                    </ul>
+                </div>
+
+                <div id="bait-crafting" class="tab-content">
+                    <h3>미끼 제작</h3>
+                    <ul id="bait-crafting-list" class="item-list">
                     </ul>
                 </div>
             </div>
@@ -113,6 +119,7 @@
                 <div class="tabs inventory-tabs">
                     <button class="tab-link" data-tab="fish-inventory">물고기</button>
                     <button class="tab-link" data-tab="equipment-inventory">장비</button>
+                    <button class="tab-link" data-tab="bait-inventory">미끼</button>
                 </div>
 
                 <div id="fish-inventory" class="tab-content">
@@ -124,6 +131,13 @@
                 <div id="equipment-inventory" class="tab-content">
                     <h3>보유 장비</h3>
                     <ul id="equipment-list" class="item-list">
+                    </ul>
+                </div>
+
+                <div id="bait-inventory" class="tab-content">
+                    <h3>보유 미끼</h3>
+                    <p>현재 장착 중인 미끼: <span id="active-bait-display">없음</span></p>
+                    <ul id="bait-list" class="item-list">
                     </ul>
                 </div>
             </div>

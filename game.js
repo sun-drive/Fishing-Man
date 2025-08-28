@@ -50,8 +50,8 @@ const fishTypesByRegion = {
 };
 
 const regions = {
-    '강': { levelRequired: 1, background: 'assets/river.jpg' },
-    '바다': { levelRequired: 5, background: 'assets/sea.png' },
+    '강': { levelRequired: 1, background: 'river.jpg' },
+    '바다': { levelRequired: 5 },
     '심해': { levelRequired: 10, background: 'assets/deep_sea.jpg' },
     '늪지대': { levelRequired: 20 },
     '아마존 강': { levelRequired: 30 }
@@ -71,6 +71,9 @@ const gameState = {
     rareFishBonusGiven: false,
     secretFishEncounters: 0,
     fishing: false,
+    activeBait: null,
+    baitInventory: [],
+    revealedFish: [],
     // 1단계: PC 추적 미니게임
     trackingMinigameActive: false,
     trackingTime: 0,
@@ -81,6 +84,8 @@ const gameState = {
     rhythmGameActive: false,
     rhythmAttemptCount: 0,
     rhythmSuccessCount: 0,
+    rhythmInterval: null,
+    rhythmGameTimeout: null,
     // 2단계: 막대 미니게임
     barMinigameActive: false,
     barMinigameStartTime: 0,
@@ -126,6 +131,13 @@ const gameState = {
             { id: 'rod_golden', name: '황금 낚싯대', desc: '5000골드 이상 보유', condition: () => gameState.gold >= 5000, owned: false, stats: { barHeightBonus: 10, trackingBonus: 0.2, biteTimeReduction: 800, minigameInvincibilityTime: 300 } },
             { id: 'rod_water', name: '물 낚싯대', desc: '바다 도감 100% 달성', condition: () => { const seaFish = fishTypesByRegion['바다']; const caughtSeaFish = seaFish.filter(f => gameState.caughtFish.includes(f.name)); return seaFish.length === caughtSeaFish.length; }, owned: false, stats: { barHeightBonus: 15, trackingBonus: 0.8, biteTimeReduction: 800, minigameInvincibilityTime: 800 } },
             { id: 'rod_black', name: '블랙 낚싯대', desc: '시크릿 물고기 2회 조우', condition: () => gameState.secretFishEncounters >= 2, owned: false, stats: { barHeightBonus: 5, trackingBonus: 0.5, biteTimeReduction: 500, minigameInvincibilityTime: 0 } },
+        ],
+        bait: [
+            { id: 'bait_golden', name: '황금 미끼', cost: 200, materials: [{rarity: 'epic', count: 1, orHigher: true}], desc: '75% 확률로 "황금" 물고기 출현' },
+            { id: 'bait_secret', name: '시크릿 미끼', cost: 120, materials: [{rarity: 'legendary', count: 1}, {rarity: 'epic', count: 2}], desc: '시크릿 물고기 출현 확률 10%' },
+            { id: 'bait_dirty', name: '더러운 미끼', cost: 80, materials: [{anyOf: [{rarity: 'common', count: 3}, {rarity: 'uncommon', count: 2}]}], desc: '미보유 일반 물고기 확정 출현' },
+            { id: 'bait_net', name: '그물 미끼', cost: 90, materials: [{anyOf: [{rarity: 'epic', count: 1}, {rarity: 'rare', count: 2}]}], desc: '50% 확률로 미끼 회수' },
+            { id: 'bait_luminous', name: '발광 미끼', cost: 100, materials: [{name: '아귀', count: 1}, {name: '블랙스왈로우', count: 1}], desc: '골드 절반 감소, 새 물고기 낚을 시 미보유 물고기 1종 해금' },
         ]
     }
 };
@@ -168,6 +180,7 @@ function resetAllFishingState() {
     hideRhythmGame();
     setButtonState(false);
     setFishingSpotCursor(false);
+    consumeBait(); // 미끼 소모 로직 호출
 }
 
 // ====================================
@@ -216,53 +229,88 @@ function startRhythmGame() {
     gameState.rhythmAttemptCount = 0;
     gameState.rhythmSuccessCount = 0;
     showRhythmGame();
-    updateGameMessage(`성공: 0 / 10`);
-    scheduleNextBar();
-}
+    updateGameMessage(`성공: 0 / 20`);
 
-function scheduleNextBar() {
-    if (!gameState.rhythmGameActive) return;
-    if (gameState.rhythmAttemptCount >= 10) {
-        endRhythmGame();
-        return;
-    }
-    // 애니메이션 시간(2초)을 기반으로 최소 간격 계산
-    const minInterval = 2000 / 6; // 1/6 화면 너비에 해당하는 시간
-    const randomInterval = Math.random() * 1000 + minInterval;
-    setTimeout(spawnRhythmBar, randomInterval);
-}
-
-function spawnRhythmBar() {
-    if (!gameState.rhythmGameActive) return;
-    gameState.rhythmAttemptCount++;
-    const bar = document.createElement('div');
-    bar.className = 'rhythm-bar';
-    document.getElementById('rhythm-bar-container').appendChild(bar);
-
-    bar.addEventListener('animationend', () => {
-        bar.remove();
-        // 탭으로 성공하지 못하고 애니메이션이 끝나면 실패로 간주
-        if (gameState.rhythmGameActive) { // 게임이 아직 끝나지 않았을 때만
-             gameState.rhythmSuccessCount = Math.max(0, gameState.rhythmSuccessCount - 1);
-             updateGameMessage(`실패! 성공: ${gameState.rhythmSuccessCount} / 10`);
+    gameState.rhythmInterval = setInterval(() => {
+        if (gameState.rhythmAttemptCount >= 20) {
+            clearInterval(gameState.rhythmInterval);
+            return;
         }
+        gameState.rhythmAttemptCount++;
+        spawnCircle();
+    }, 500);
+
+    // 10s for spawning + 1.5s for the last circle to disappear
+    gameState.rhythmGameTimeout = setTimeout(endRhythmGame, 11500);
+}
+
+function spawnCircle() {
+    if (!gameState.rhythmGameActive) return;
+
+    const container = document.getElementById('rhythm-game-container');
+    if (!container) return;
+
+    const circle = document.createElement('div');
+    circle.className = 'rhythm-circle';
+
+    // Set random position within the container
+    const containerRect = container.getBoundingClientRect();
+    const circleSize = 50; // Should match CSS
+    const newTop = Math.random() * (containerRect.height - circleSize);
+    const newLeft = Math.random() * (containerRect.width - circleSize);
+    circle.style.top = `${newTop}px`;
+    circle.style.left = `${newLeft}px`;
+
+    let clicked = false;
+
+    const clickHandler = () => {
+        if (clicked) return;
+        clicked = true;
+        gameState.rhythmSuccessCount++;
+        updateGameMessage(`성공: ${gameState.rhythmSuccessCount} / 20`);
+        circle.remove();
+        clearTimeout(disappearTimeout); // Prevent removal logic from running again
+    };
+
+    circle.addEventListener('click', clickHandler);
+    circle.addEventListener('touchstart', (e) => {
+        e.preventDefault();
+        clickHandler();
     });
-    scheduleNextBar();
+
+
+    const disappearTimeout = setTimeout(() => {
+        if (!clicked) {
+            circle.remove();
+        }
+    }, 1500);
+
+    container.appendChild(circle);
 }
 
 function endRhythmGame() {
-    hideRhythmGame();
+    // Clean up
     gameState.rhythmGameActive = false;
+    clearInterval(gameState.rhythmInterval);
+    clearTimeout(gameState.rhythmGameTimeout);
+    document.querySelectorAll('.rhythm-circle').forEach(c => c.remove());
+    hideRhythmGame();
+
+    const grade = Math.floor(gameState.rhythmSuccessCount / 2) + 1;
+    updateGameMessage(`총 ${gameState.rhythmSuccessCount}번 성공! 등급: ${grade}`);
+
+    if (grade < 3) { // Corresponds to < 4 successes
+        updateGameMessage('물고기가 도망갔습니다...');
+        resetAllFishingState();
+        return;
+    }
+
     let possibleRarities = [];
-    const success = gameState.rhythmSuccessCount;
+    if (grade >= 9) possibleRarities.push('legendary', 'epic'); // 16+ successes
+    if (grade >= 7) possibleRarities.push('rare'); // 12+ successes
+    if (grade >= 5) possibleRarities.push('uncommon'); // 8+ successes
+    possibleRarities.push('common'); // 4+ successes
 
-    if (success >= 9) possibleRarities.push('legendary', 'epic', 'rare', 'uncommon', 'common');
-    else if (success >= 7) possibleRarities.push('epic', 'rare', 'uncommon', 'common');
-    else if (success >= 5) possibleRarities.push('rare', 'uncommon', 'common');
-    else if (success >= 3) possibleRarities.push('uncommon', 'common');
-    else possibleRarities.push('common');
-
-    updateGameMessage(`${success}번 성공!`);
     selectFishByRarity(possibleRarities);
 }
 
@@ -271,6 +319,32 @@ function endRhythmGame() {
 // ====================================
 
 function selectFishByRarity(possibleRarities) {
+    // 미끼 효과 적용
+    if (gameState.activeBait) {
+        if (gameState.activeBait.id === 'bait_secret') {
+            if (Math.random() < 0.1) {
+                const secretFish = fishTypesByRegion[gameState.currentRegion].find(f => f.rarity === 'secret');
+                if (secretFish) {
+                    gameState.potentialFish = secretFish;
+                    gameState.secretFishEncounters++;
+                    showSecretAppearanceMessage();
+                    startBarMinigame();
+                    return;
+                }
+            }
+        }
+        if (gameState.activeBait.id === 'bait_dirty') {
+            const uncaughtCommonFish = fishTypesByRegion[gameState.currentRegion].filter(f => 
+                f.rarity === 'common' && !gameState.caughtFish.includes(f.name)
+            );
+            if (uncaughtCommonFish.length > 0) {
+                gameState.potentialFish = uncaughtCommonFish[Math.floor(Math.random() * uncaughtCommonFish.length)];
+                startBarMinigame();
+                return;
+            }
+        }
+    }
+
     if (gameState.currentRegion === '아마존 강') {
         const piranhaReleased = gameState.releasedFishCounts['피라냐'] || 0;
         const candiruReleased = gameState.releasedFishCounts['칸디루(흡혈메기)'] || 0;
@@ -411,12 +485,22 @@ function catchFish(fish, isBonus = false) {
     let price = Math.round(fishToCatch.basePrice * (size / fishToCatch.minSize));
     let isGolden = false;
 
+    // 미끼 효과 적용
+    if (gameState.activeBait && gameState.activeBait.id === 'bait_golden' && Math.random() < 0.75) {
+        isGolden = true;
+    }
+
     if (gameState.currentRod.id === 'rod_golden' && Math.random() < 0.1 && !isBonus) {
         price *= 2;
         isGolden = true;
     }
 
+    if (isGolden) {
+        price *= 2; // 황금 물고기는 가격 2배
+    }
+
     const xpGained = Math.round(price * 1.5);
+    const wasAlreadyCaught = gameState.caughtFish.includes(fishToCatch.name);
 
     if (gameState.achievements.fishCaught[fishToCatch.name] !== undefined) {
         gameState.achievements.fishCaught[fishToCatch.name]++;
@@ -424,8 +508,18 @@ function catchFish(fish, isBonus = false) {
         gameState.achievements.fishCaught[fishToCatch.name] = 1;
     }
 
-    if (!gameState.caughtFish.includes(fishToCatch.name)) {
+    if (!wasAlreadyCaught) {
         gameState.caughtFish.push(fishToCatch.name);
+        // 발광 미끼 효과
+        if (gameState.activeBait && gameState.activeBait.id === 'bait_luminous') {
+            const allFish = Object.values(fishTypesByRegion).flat();
+            const uncaughtFish = allFish.filter(f => f.rarity !== 'secret' && !gameState.caughtFish.includes(f.name) && !gameState.revealedFish.includes(f.name));
+            if (uncaughtFish.length > 0) {
+                const revealed = uncaughtFish[Math.floor(Math.random() * uncaughtFish.length)];
+                gameState.revealedFish.push(revealed.name);
+                updateGameMessage(`${revealed.name}의 정보를 해금했습니다!`);
+            }
+        }
     }
 
     const inventoryFish = { name: fishToCatch.name, size: size, price: price, rarity: fishToCatch.rarity };
@@ -582,6 +676,131 @@ function handleAchievementItem(itemId) {
 }
 
 // ====================================
+// 미끼 로직
+// ====================================
+
+function craftBait(baitId) {
+    const bait = gameState.shopItems.bait.find(b => b.id === baitId);
+    if (!bait) return;
+
+    if (gameState.gold < bait.cost) {
+        updateGameMessage('골드가 부족합니다.');
+        return;
+    }
+
+    const inventoryCopy = [...gameState.inventory];
+    const materialsToRemove = [];
+
+    const hasMaterials = bait.materials.every(material => {
+        if (material.anyOf) {
+            return material.anyOf.some(option => {
+                const tempInventory = [...inventoryCopy];
+                const foundMaterials = [];
+                for (let i = 0; i < option.count; i++) {
+                    const fishIndex = tempInventory.findIndex(fish => fish.rarity === option.rarity);
+                    if (fishIndex !== -1) {
+                        foundMaterials.push(tempInventory.splice(fishIndex, 1)[0]);
+                    } else {
+                        return false;
+                    }
+                }
+                materialsToRemove.push(...foundMaterials.map(f => gameState.inventory.indexOf(f)));
+                return true;
+            });
+        } else if (material.rarity) {
+            let required = material.count;
+            for (let i = 0; i < inventoryCopy.length; i++) {
+                if (required === 0) break;
+                const fish = inventoryCopy[i];
+                const rarityOrder = ['common', 'uncommon', 'rare', 'epic', 'legendary', 'secret'];
+                const fishRarityIndex = rarityOrder.indexOf(fish.rarity);
+                const requiredRarityIndex = rarityOrder.indexOf(material.rarity);
+                if ((material.orHigher && fishRarityIndex >= requiredRarityIndex) || (!material.orHigher && fish.rarity === material.rarity)) {
+                    materialsToRemove.push(gameState.inventory.indexOf(fish));
+                    required--;
+                }
+            }
+            return required === 0;
+        } else if (material.name) {
+            let required = material.count;
+            for (let i = 0; i < inventoryCopy.length; i++) {
+                if (required === 0) break;
+                const fish = inventoryCopy[i];
+                if (fish.name === material.name) {
+                    materialsToRemove.push(gameState.inventory.indexOf(fish));
+                    required--;
+                }
+            }
+            return required === 0;
+        }
+        return false;
+    });
+
+    if (hasMaterials) {
+        gameState.gold -= bait.cost;
+        // Sort indices in descending order to avoid shifting issues
+        materialsToRemove.sort((a, b) => b - a).forEach(index => {
+            gameState.inventory.splice(index, 1);
+        });
+
+        gameState.baitInventory.push({ ...bait });
+        updateGameMessage(`${bait.name}을(를) 제작했습니다.`);
+        updatePlayerInfo();
+        updateInventoryUI();
+        updateShopUI();
+    } else {
+        updateGameMessage('재료가 부족합니다.');
+    }
+}
+
+function equipBait(inventoryIndex) {
+    if (inventoryIndex < 0 || inventoryIndex >= gameState.baitInventory.length) return;
+
+    const baitToEquip = gameState.baitInventory[inventoryIndex];
+
+    if (gameState.activeBait && gameState.activeBait.id === baitToEquip.id) {
+        // Unequip if the same bait is clicked again
+        unequipBait();
+        return;
+    }
+
+    if (baitToEquip.id === 'bait_luminous') {
+        gameState.gold = Math.floor(gameState.gold / 2);
+        updateGameMessage(`발광 미끼의 효과로 골드가 ${gameState.gold}G가 되었습니다.`);
+        updatePlayerInfo();
+    }
+
+    gameState.activeBait = baitToEquip;
+    updateGameMessage(`${baitToEquip.name}을(를) 장착했습니다.`);
+    updateInventoryUI();
+}
+
+function unequipBait() {
+    if (!gameState.activeBait) return;
+    const baitName = gameState.activeBait.name;
+    gameState.activeBait = null;
+    updateGameMessage(`${baitName} 장착을 해제했습니다.`);
+    updateInventoryUI();
+}
+
+function consumeBait() {
+    if (!gameState.activeBait) return;
+
+    if (gameState.activeBait.id === 'bait_net' && Math.random() < 0.5) {
+        updateGameMessage('그물 미끼 효과 발동! 미끼를 회수했습니다.');
+        // Don't consume the bait
+    } else {
+        const baitIndex = gameState.baitInventory.findIndex(b => b.id === gameState.activeBait.id);
+        if (baitIndex !== -1) {
+            gameState.baitInventory.splice(baitIndex, 1);
+        }
+    }
+    gameState.activeBait = null;
+    updateInventoryUI();
+}
+
+
+// ====================================
 // 저장/불러오기 로직
 // ====================================
 
@@ -604,7 +823,10 @@ function saveGame() {
                 gold: gameState.shopItems.gold.map(item => ({ id: item.id, owned: item.owned })),
                 achievement: gameState.shopItems.achievement.map(item => ({ id: item.id, owned: item.owned }))
             },
-            currentRodId: gameState.currentRod.id
+            currentRodId: gameState.currentRod.id,
+            baitInventory: gameState.baitInventory,
+            activeBait: gameState.activeBait,
+            revealedFish: gameState.revealedFish
         };
 
         localStorage.setItem('fishingman_save', JSON.stringify(saveData));
@@ -637,6 +859,9 @@ function loadGame() {
         gameState.rareFishBonusGiven = saveData.rareFishBonusGiven || false;
         gameState.secretFishEncounters = saveData.secretFishEncounters || 0;
         gameState.achievements = saveData.achievements || { fishCaught: { '붕어': 0, '참치': 0 } };
+        gameState.baitInventory = saveData.baitInventory || [];
+        gameState.activeBait = saveData.activeBait || null;
+        gameState.revealedFish = saveData.revealedFish || [];
 
         if (saveData.shopItemsOwned) {
             if (saveData.shopItemsOwned.gold) {
@@ -682,6 +907,9 @@ function loadGame() {
             releasedRareFishCount: 0,
             rareFishBonusGiven: false,
             secretFishEncounters: 0,
+            baitInventory: [],
+            activeBait: null,
+            revealedFish: []
         });
     }
 }

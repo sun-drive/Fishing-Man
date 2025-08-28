@@ -19,12 +19,15 @@ const shopModalEl = document.getElementById('shop-modal');
 const closeShopButtonEl = document.getElementById('close-shop-button');
 const goldShopListEl = document.getElementById('gold-shop-list');
 const achievementShopListEl = document.getElementById('achievement-shop-list');
+const baitCraftingListEl = document.getElementById('bait-crafting-list');
 const shopTabsContainerEl = document.querySelector('.shop-tabs');
 // 인벤토리 UI
 const inventoryModalEl = document.getElementById('inventory-modal');
 const closeInventoryButtonEl = document.getElementById('close-inventory-button');
 const fishListEl = document.getElementById('fish-list');
 const equipmentListEl = document.getElementById('equipment-list');
+const baitListEl = document.getElementById('bait-list');
+const activeBaitDisplayEl = document.getElementById('active-bait-display');
 const inventoryTabsContainerEl = document.querySelector('.inventory-tabs');
 const regionContainerEl = document.getElementById('region-container'); // 지역 컨테이너 추가
 // 도감 UI
@@ -115,12 +118,30 @@ function moveFishIcon() {
 // 2단계: 막대 미니게임 UI
 // ====================================
 
-function showBarMinigame() {
+window.showBarMinigame = function() {
     if (barMinigameContainerEl) barMinigameContainerEl.classList.remove('hidden');
 }
 
-function hideBarMinigame() {
+window.hideBarMinigame = function() {
     if (barMinigameContainerEl) barMinigameContainerEl.classList.add('hidden');
+}
+
+function hideRhythmGame() {
+    const rhythmGameContainer = document.getElementById('rhythm-game-container');
+    if (rhythmGameContainer) {
+        rhythmGameContainer.classList.add('hidden');
+    }
+    const rhythmBarContainer = document.getElementById('rhythm-bar-container');
+    if (rhythmBarContainer) {
+        rhythmBarContainer.innerHTML = '';
+    }
+}
+
+window.showRhythmGame = function() {
+    const rhythmGameContainer = document.getElementById('rhythm-game-container');
+    if (rhythmGameContainer) {
+        rhythmGameContainer.classList.remove('hidden');
+    }
 }
 
 function updateBarMinigameUI() {
@@ -190,7 +211,7 @@ function hideShop() {
 }
 
 function updateShopUI() {
-    if (!goldShopListEl || !achievementShopListEl) return;
+    if (!goldShopListEl || !achievementShopListEl || !baitCraftingListEl) return;
     goldShopListEl.innerHTML = '';
     gameState.shopItems.gold.forEach(item => {
         const li = document.createElement('li');
@@ -220,6 +241,24 @@ function updateShopUI() {
         if (isEquipped) li.classList.add('equipped');
         achievementShopListEl.appendChild(li);
     });
+
+    baitCraftingListEl.innerHTML = '';
+    gameState.shopItems.bait.forEach(bait => {
+        const li = document.createElement('li');
+        const materialsText = bait.materials.map(mat => {
+            if (mat.anyOf) {
+                return mat.anyOf.map(opt => `${opt.rarity} ${opt.count}개`).join(' 또는 ');
+            }
+            return `${mat.name || (mat.rarity + (mat.orHigher ? ' 이상' : ''))} ${mat.count}개`;
+        }).join(', ');
+        
+        li.innerHTML = `
+            ${bait.name} - ${bait.desc}<br>
+            재료: ${materialsText} + ${bait.cost}골드
+            <button class="craft-bait-button" data-bait-id="${bait.id}">제작</button>
+        `;
+        baitCraftingListEl.appendChild(li);
+    });
 }
 
 // ====================================
@@ -238,7 +277,7 @@ function hideInventory() {
 }
 
 function updateInventoryUI() {
-    if (!fishListEl || !equipmentListEl) return;
+    if (!fishListEl || !equipmentListEl || !baitListEl || !activeBaitDisplayEl) return;
     fishListEl.innerHTML = '';
     gameState.inventory.forEach((fish, index) => {
         const li = document.createElement('li');
@@ -272,6 +311,28 @@ function updateInventoryUI() {
         }
         equipmentListEl.appendChild(li);
     });
+
+    activeBaitDisplayEl.textContent = gameState.activeBait ? gameState.activeBait.name : '없음';
+    baitListEl.innerHTML = '';
+    const baitCounts = gameState.baitInventory.reduce((acc, bait) => {
+        acc[bait.id] = (acc[bait.id] || 0) + 1;
+        return acc;
+    }, {});
+
+    Object.keys(baitCounts).forEach(baitId => {
+        const bait = gameState.baitInventory.find(b => b.id === baitId);
+        const count = baitCounts[baitId];
+        const li = document.createElement('li');
+        const isEquipped = gameState.activeBait && gameState.activeBait.id === bait.id;
+        li.innerHTML = `
+            ${bait.name} (x${count}) - ${bait.desc}
+            <button class="equip-bait-button" data-bait-id="${bait.id}">${isEquipped ? '해제' : '장착'}</button>
+        `;
+        if (isEquipped) {
+            li.classList.add('equipped');
+        }
+        baitListEl.appendChild(li);
+    });
 }
 
 // ====================================
@@ -303,12 +364,16 @@ function updateCollectionUI() {
         const secretFish = fishInRegion.find(f => f.rarity === 'secret');
         normalFish.forEach(fish => {
             const isCaught = gameState.caughtFish.includes(fish.name);
+            const isRevealed = gameState.revealedFish.includes(fish.name);
             const fishCard = document.createElement('div');
             fishCard.className = 'collection-card';
             const fishNameSpan = document.createElement('span');
             if (isCaught) {
                 fishNameSpan.textContent = fish.name;
                 fishCard.classList.add(`rarity-${fish.rarity}`);
+            } else if (isRevealed) {
+                fishNameSpan.textContent = fish.name;
+                fishCard.classList.add('revealed');
             } else {
                 fishNameSpan.textContent = '???';
                 fishCard.classList.add('not-caught');
