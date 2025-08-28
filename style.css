@@ -605,11 +605,15 @@ button:disabled {
     position: absolute;
     width: 50px;
     height: 50px;
-    background-color: rgba(255, 99, 71, 0.8);
+    background-color: rgba(0, 255, 0, 0.7); /* Green */
     border-radius: 50%;
     border: 2px solid white;
     cursor: pointer;
     animation: fadeIn 0.2s;
+}
+
+.rhythm-circle.red {
+    background-color: rgba(255, 0, 0, 0.7); /* Red */
 }
 
 .rhythm-circle:active {

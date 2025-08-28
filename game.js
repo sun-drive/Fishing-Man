@@ -85,6 +85,7 @@ const gameState = {
     rhythmAttemptCount: 0,
     rhythmSuccessCount: 0,
     rhythmInterval: null,
+    rhythmRedCircleInterval: null, // 빨간 동그라미 타이머
     rhythmGameTimeout: null,
     // 2단계: 막대 미니게임
     barMinigameActive: false,
@@ -174,6 +175,9 @@ function resetAllFishingState() {
     clearInterval(gameState.trackingInterval);
     clearInterval(gameState.fishMovementInterval);
     clearTimeout(gameState.trackingMinigameTimeout);
+    clearInterval(gameState.rhythmInterval);
+    clearInterval(gameState.rhythmRedCircleInterval);
+    clearTimeout(gameState.rhythmGameTimeout);
     cancelAnimationFrame(gameState.barMinigameLoop);
     hideFishIcon();
     hideBarMinigame();
@@ -240,6 +244,8 @@ function startRhythmGame() {
         spawnCircle();
     }, 500);
 
+    gameState.rhythmRedCircleInterval = setInterval(spawnRedCircle, 2000); // 2초마다 빨간 동그라미 생성
+
     // 10s for spawning + 1.5s for the last circle to disappear
     gameState.rhythmGameTimeout = setTimeout(endRhythmGame, 11500);
 }
@@ -292,6 +298,7 @@ function endRhythmGame() {
     // Clean up
     gameState.rhythmGameActive = false;
     clearInterval(gameState.rhythmInterval);
+    clearInterval(gameState.rhythmRedCircleInterval); // 빨간 동그라미 타이머 정지
     clearTimeout(gameState.rhythmGameTimeout);
     document.querySelectorAll('.rhythm-circle').forEach(c => c.remove());
     hideRhythmGame();
@@ -312,6 +319,48 @@ function endRhythmGame() {
     possibleRarities.push('common'); // 4+ successes
 
     selectFishByRarity(possibleRarities);
+}
+
+function spawnRedCircle() {
+    if (!gameState.rhythmGameActive) return;
+
+    const container = document.getElementById('rhythm-game-container');
+    if (!container) return;
+
+    const circle = document.createElement('div');
+    circle.className = 'rhythm-circle red'; // 빨간색 클래스 추가
+
+    const containerRect = container.getBoundingClientRect();
+    const circleSize = 50;
+    const newTop = Math.random() * (containerRect.height - circleSize);
+    const newLeft = Math.random() * (containerRect.width - circleSize);
+    circle.style.top = `${newTop}px`;
+    circle.style.left = `${newLeft}px`;
+
+    let clicked = false;
+
+    const clickHandler = () => {
+        if (clicked) return;
+        clicked = true;
+        gameState.rhythmSuccessCount--; // 성공 횟수 감소
+        updateGameMessage(`성공: ${gameState.rhythmSuccessCount} / 20`);
+        circle.remove();
+        clearTimeout(disappearTimeout);
+    };
+
+    circle.addEventListener('click', clickHandler);
+    circle.addEventListener('touchstart', (e) => {
+        e.preventDefault();
+        clickHandler();
+    });
+
+    const disappearTimeout = setTimeout(() => {
+        if (!clicked) {
+            circle.remove();
+        }
+    }, 1800); // 빨간 동그라미는 조금 더 빨리 사라짐
+
+    container.appendChild(circle);
 }
 
 // ====================================
