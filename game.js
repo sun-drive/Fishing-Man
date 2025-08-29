@@ -244,7 +244,7 @@ function startRhythmGame() {
         spawnCircle();
     }, 500);
 
-    gameState.rhythmRedCircleInterval = setInterval(spawnRedCircle, 2000); // 2초마다 빨간 동그라미 생성
+    
 
     // 10s for spawning + 1.5s for the last circle to disappear
     gameState.rhythmGameTimeout = setTimeout(endRhythmGame, 11500);
@@ -252,6 +252,8 @@ function startRhythmGame() {
 
 function spawnCircle() {
     if (!gameState.rhythmGameActive) return;
+
+    spawnRedCircle(); // 빨간 동그라미 동시 생성
 
     const container = document.getElementById('rhythm-game-container');
     if (!container) return;
@@ -289,7 +291,7 @@ function spawnCircle() {
         if (!clicked) {
             circle.remove();
         }
-    }, 1500);
+    }, 375);
 
     container.appendChild(circle);
 }
@@ -358,7 +360,7 @@ function spawnRedCircle() {
         if (!clicked) {
             circle.remove();
         }
-    }, 1800); // 빨간 동그라미는 조금 더 빨리 사라짐
+    }, 1500); // 빨간 동그라미는 1.5초 후에 사라짐
 
     container.appendChild(circle);
 }
